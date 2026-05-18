@@ -1,0 +1,25 @@
+From 79ad9c6469c8c51239aedcba89be3019abae5dd9 Mon Sep 17 00:00:00 2001
+From: niuke <sully.niu@outlook.com>
+Date: Thu, 22 Jan 2026 11:21:31 +0800
+Subject: [PATCH 07/13] add CONFIG_DRM_PANEL_ALIENTEK_MIPI_LCD in
+ stm32mp257_defconfig
+
+---
+ arch/arm64/configs/stm32mp257_defconfig | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/arch/arm64/configs/stm32mp257_defconfig b/arch/arm64/configs/stm32mp257_defconfig
+index b9ff39af1..d701001ec 100644
+--- a/arch/arm64/configs/stm32mp257_defconfig
++++ b/arch/arm64/configs/stm32mp257_defconfig
+@@ -4999,6 +4999,7 @@ CONFIG_DRM_PANEL=y
+ #
+ # Display Panels
+ #
++CONFIG_DRM_PANEL_ALIENTEK_MIPI_LCD=y
+ # CONFIG_DRM_PANEL_ABT_Y030XX067A is not set
+ # CONFIG_DRM_PANEL_ARM_VERSATILE is not set
+ # CONFIG_DRM_PANEL_ASUS_Z00T_TM5P5_NT35596 is not set
+-- 
+2.43.0
+

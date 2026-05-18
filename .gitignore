@@ -1,0 +1,15 @@
+# OS / editor
+.DS_Store
+Thumbs.db
+*.swp
+*~
+
+# Claude Code local state
+.claude/
+
+# Yocto build output (if ever created inside the tree)
+build/
+tmp/
+sstate-cache/
+downloads/
+*.lock

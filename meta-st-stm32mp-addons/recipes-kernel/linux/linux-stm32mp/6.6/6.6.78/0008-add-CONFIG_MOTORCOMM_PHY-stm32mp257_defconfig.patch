@@ -1,0 +1,25 @@
+From 44331d368d23c6a1a3c213da2151c5fd72a540cf Mon Sep 17 00:00:00 2001
+From: niuke <sully.niu@outlook.com>
+Date: Thu, 22 Jan 2026 14:49:09 +0800
+Subject: [PATCH 08/13] add CONFIG_MOTORCOMM_PHY stm32mp257_defconfig
+
+---
+ arch/arm64/configs/stm32mp257_defconfig | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/arch/arm64/configs/stm32mp257_defconfig b/arch/arm64/configs/stm32mp257_defconfig
+index d701001ec..e1417d692 100644
+--- a/arch/arm64/configs/stm32mp257_defconfig
++++ b/arch/arm64/configs/stm32mp257_defconfig
+@@ -2919,7 +2919,7 @@ CONFIG_MICREL_PHY=y
+ CONFIG_MICROCHIP_PHY=m
+ # CONFIG_MICROCHIP_T1_PHY is not set
+ CONFIG_MICROSEMI_PHY=y
+-# CONFIG_MOTORCOMM_PHY is not set
++CONFIG_MOTORCOMM_PHY=y
+ # CONFIG_NATIONAL_PHY is not set
+ # CONFIG_NXP_CBTX_PHY is not set
+ # CONFIG_NXP_C45_TJA11XX_PHY is not set
+-- 
+2.43.0
+

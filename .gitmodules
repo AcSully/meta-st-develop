@@ -1,0 +1,4 @@
+[submodule "meta-st-stm32mp-addons/mx"]
+	path = meta-st-stm32mp-addons/mx
+	url = git@github.com:AcSully/STM32MP257DAK3.git
+	branch = feature/yocto-stm32mp2-atk-2g16g

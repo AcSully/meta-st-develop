@@ -1,0 +1,67 @@
+From 7ff140e1d199b227186caca8eed9c9a0db96527b Mon Sep 17 00:00:00 2001
+From: niuke <sully.niu@outlook.com>
+Date: Fri, 6 Mar 2026 14:10:09 +0800
+Subject: [PATCH 11/13] modify audio m -> y
+
+---
+ .../arm64/configs/stm32mp257_buildroot_defconfig | 16 ++++++++--------
+ 1 file changed, 8 insertions(+), 8 deletions(-)
+
+diff --git a/arch/arm64/configs/stm32mp257_buildroot_defconfig b/arch/arm64/configs/stm32mp257_buildroot_defconfig
+index 26f814c87..6094ccd95 100644
+--- a/arch/arm64/configs/stm32mp257_buildroot_defconfig
++++ b/arch/arm64/configs/stm32mp257_buildroot_defconfig
+@@ -5237,10 +5237,10 @@ CONFIG_SND_SOC_IMX_AUDMUX=m
+ #
+ # STMicroelectronics STM32 SOC audio support
+ #
+-CONFIG_SND_SOC_STM32_SAI=m
+-CONFIG_SND_SOC_STM32_I2S=m
+-CONFIG_SND_SOC_STM32_SPDIFRX=m
+-CONFIG_SND_SOC_STM32_MDF=m
++CONFIG_SND_SOC_STM32_SAI=y
++CONFIG_SND_SOC_STM32_I2S=y
++CONFIG_SND_SOC_STM32_SPDIFRX=y
++CONFIG_SND_SOC_STM32_MDF=y
+ # end of STMicroelectronics STM32 SOC audio support
+ 
+ # CONFIG_SND_SOC_XILINX_I2S is not set
+@@ -5311,7 +5311,7 @@ CONFIG_SND_SOC_CROS_EC_CODEC=m
+ # CONFIG_SND_SOC_CS53L30 is not set
+ # CONFIG_SND_SOC_CX2072X is not set
+ CONFIG_SND_SOC_DA7213=m
+-CONFIG_SND_SOC_DMIC=m
++CONFIG_SND_SOC_DMIC=y
+ CONFIG_SND_SOC_HDMI_CODEC=m
+ CONFIG_SND_SOC_ES7134=m
+ CONFIG_SND_SOC_ES7241=m
+@@ -5319,7 +5319,7 @@ CONFIG_SND_SOC_ES8316=m
+ # CONFIG_SND_SOC_ES8326 is not set
+ # CONFIG_SND_SOC_ES8328_I2C is not set
+ # CONFIG_SND_SOC_ES8328_SPI is not set
+-CONFIG_SND_SOC_ES8388=m
++CONFIG_SND_SOC_ES8388=y
+ CONFIG_SND_SOC_GTM601=m
+ # CONFIG_SND_SOC_HDA is not set
+ # CONFIG_SND_SOC_ICS43432 is not set
+@@ -5381,7 +5381,7 @@ CONFIG_SND_SOC_SGTL5000=m
+ CONFIG_SND_SOC_SIMPLE_AMPLIFIER=m
+ CONFIG_SND_SOC_SIMPLE_MUX=m
+ # CONFIG_SND_SOC_SMA1303 is not set
+-CONFIG_SND_SOC_SPDIF=m
++CONFIG_SND_SOC_SPDIF=y
+ # CONFIG_SND_SOC_SRC4XXX_I2C is not set
+ # CONFIG_SND_SOC_SSM2305 is not set
+ # CONFIG_SND_SOC_SSM2518 is not set
+@@ -5478,7 +5478,7 @@ CONFIG_SND_SOC_LPASS_TX_MACRO=m
+ 
+ CONFIG_SND_SIMPLE_CARD_UTILS=m
+ CONFIG_SND_SIMPLE_CARD=m
+-CONFIG_SND_AUDIO_GRAPH_CARD=m
++CONFIG_SND_AUDIO_GRAPH_CARD=y
+ CONFIG_SND_AUDIO_GRAPH_CARD2=m
+ # CONFIG_SND_AUDIO_GRAPH_CARD2_CUSTOM_SAMPLE is not set
+ # CONFIG_SND_TEST_COMPONENT is not set
+-- 
+2.43.0
+

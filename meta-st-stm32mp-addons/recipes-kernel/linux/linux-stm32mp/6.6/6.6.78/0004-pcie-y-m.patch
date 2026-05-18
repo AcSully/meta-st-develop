@@ -1,0 +1,27 @@
+From 002552573d5813ec659a9ba10db70983d0424b5b Mon Sep 17 00:00:00 2001
+From: niuke <sully.niu@outlook.com>
+Date: Mon, 5 Jan 2026 18:05:34 +0800
+Subject: [PATCH 04/13] pcie y -> m
+
+---
+ arch/arm64/configs/stm32mp257_defconfig | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/arch/arm64/configs/stm32mp257_defconfig b/arch/arm64/configs/stm32mp257_defconfig
+index b664aba0c..92b22e650 100644
+--- a/arch/arm64/configs/stm32mp257_defconfig
++++ b/arch/arm64/configs/stm32mp257_defconfig
+@@ -1885,8 +1885,8 @@ CONFIG_PCI_HISI=y
+ CONFIG_PCIE_KIRIN=y
+ # CONFIG_PCIE_DW_PLAT_HOST is not set
+ # CONFIG_PCIE_DW_PLAT_EP is not set
+-CONFIG_PCIE_STM32=y
+-CONFIG_PCIE_STM32_EP=y
++CONFIG_PCIE_STM32=m
++CONFIG_PCIE_STM32_EP=m
+ # end of DesignWare-based PCIe controllers
+ 
+ #
+-- 
+2.43.0
+

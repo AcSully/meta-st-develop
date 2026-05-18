@@ -1,0 +1,1731 @@
+From 2288f72ec4148f419206d90a6ba2665570e36810 Mon Sep 17 00:00:00 2001
+From: niuke <sully.niu@outlook.com>
+Date: Tue, 3 Mar 2026 15:54:45 +0800
+Subject: [PATCH 10/13] audeo code ES8388 ok
+
+---
+ .../configs/stm32mp257_buildroot_defconfig    |   1 +
+ arch/arm64/configs/stm32mp257_defconfig       | 142 +--
+ sound/soc/codecs/Kconfig                      |   5 +
+ sound/soc/codecs/Makefile                     |   2 +
+ sound/soc/codecs/es8388.c                     | 993 ++++++++++++++++++
+ sound/soc/codecs/es8388.h                     | 152 +++
+ sound/soc/codecs/es_comp.h                    |  32 +
+ 7 files changed, 1257 insertions(+), 70 deletions(-)
+ create mode 100755 sound/soc/codecs/es8388.c
+ create mode 100755 sound/soc/codecs/es8388.h
+ create mode 100755 sound/soc/codecs/es_comp.h
+
+diff --git a/arch/arm64/configs/stm32mp257_buildroot_defconfig b/arch/arm64/configs/stm32mp257_buildroot_defconfig
+index b03cf82df..26f814c87 100644
+--- a/arch/arm64/configs/stm32mp257_buildroot_defconfig
++++ b/arch/arm64/configs/stm32mp257_buildroot_defconfig
+@@ -5319,6 +5319,7 @@ CONFIG_SND_SOC_ES8316=m
+ # CONFIG_SND_SOC_ES8326 is not set
+ # CONFIG_SND_SOC_ES8328_I2C is not set
+ # CONFIG_SND_SOC_ES8328_SPI is not set
++CONFIG_SND_SOC_ES8388=m
+ CONFIG_SND_SOC_GTM601=m
+ # CONFIG_SND_SOC_HDA is not set
+ # CONFIG_SND_SOC_ICS43432 is not set
+diff --git a/arch/arm64/configs/stm32mp257_defconfig b/arch/arm64/configs/stm32mp257_defconfig
+index e1417d692..adc19a3c5 100644
+--- a/arch/arm64/configs/stm32mp257_defconfig
++++ b/arch/arm64/configs/stm32mp257_defconfig
+@@ -599,7 +599,7 @@ CONFIG_CPU_FREQ_GOV_SCHEDUTIL=y
+ #
+ # CPU frequency scaling drivers
+ #
+-CONFIG_CPUFREQ_DT=m
++CONFIG_CPUFREQ_DT=y
+ CONFIG_CPUFREQ_DT_PLATDEV=y
+ CONFIG_ACPI_CPPC_CPUFREQ=m
+ CONFIG_ACPI_CPPC_CPUFREQ_FIE=y
+@@ -1089,7 +1089,7 @@ CONFIG_DEFAULT_CUBIC=y
+ # CONFIG_DEFAULT_RENO is not set
+ CONFIG_DEFAULT_TCP_CONG="cubic"
+ CONFIG_TCP_MD5SIG=y
+-CONFIG_IPV6=m
++CONFIG_IPV6=y
+ # CONFIG_IPV6_ROUTER_PREF is not set
+ # CONFIG_IPV6_OPTIMISTIC_DAD is not set
+ # CONFIG_INET6_AH is not set
+@@ -1113,6 +1113,7 @@ CONFIG_IPV6_MROUTE_MULTIPLE_TABLES=y
+ CONFIG_IPV6_PIMSM_V2=y
+ CONFIG_IPV6_SEG6_LWTUNNEL=y
+ CONFIG_IPV6_SEG6_HMAC=y
++CONFIG_IPV6_SEG6_BPF=y
+ # CONFIG_IPV6_RPL_LWTUNNEL is not set
+ # CONFIG_IPV6_IOAM6_LWTUNNEL is not set
+ # CONFIG_NETLABEL is not set
+@@ -1537,14 +1538,14 @@ CONFIG_NET_SCH_SFB=m
+ CONFIG_NET_SCH_SFQ=m
+ CONFIG_NET_SCH_TEQL=m
+ CONFIG_NET_SCH_TBF=m
+-CONFIG_NET_SCH_CBS=m
++CONFIG_NET_SCH_CBS=y
+ CONFIG_NET_SCH_ETF=m
+-CONFIG_NET_SCH_MQPRIO_LIB=m
+-CONFIG_NET_SCH_TAPRIO=m
++CONFIG_NET_SCH_MQPRIO_LIB=y
++CONFIG_NET_SCH_TAPRIO=y
+ CONFIG_NET_SCH_GRED=m
+ CONFIG_NET_SCH_NETEM=m
+ CONFIG_NET_SCH_DRR=m
+-CONFIG_NET_SCH_MQPRIO=m
++CONFIG_NET_SCH_MQPRIO=y
+ CONFIG_NET_SCH_SKBPRIO=m
+ CONFIG_NET_SCH_CHOKE=m
+ CONFIG_NET_SCH_QFQ=m
+@@ -1592,26 +1593,26 @@ CONFIG_NET_EMATCH_CANID=m
+ # CONFIG_NET_EMATCH_IPSET is not set
+ # CONFIG_NET_EMATCH_IPT is not set
+ CONFIG_NET_CLS_ACT=y
+-CONFIG_NET_ACT_POLICE=m
+-CONFIG_NET_ACT_GACT=m
++CONFIG_NET_ACT_POLICE=y
++CONFIG_NET_ACT_GACT=y
+ CONFIG_GACT_PROB=y
+-CONFIG_NET_ACT_MIRRED=m
++CONFIG_NET_ACT_MIRRED=y
+ CONFIG_NET_ACT_SAMPLE=m
+ # CONFIG_NET_ACT_IPT is not set
+ CONFIG_NET_ACT_NAT=m
+ CONFIG_NET_ACT_PEDIT=m
+ # CONFIG_NET_ACT_SIMP is not set
+-CONFIG_NET_ACT_SKBEDIT=m
++CONFIG_NET_ACT_SKBEDIT=y
+ CONFIG_NET_ACT_CSUM=m
+ # CONFIG_NET_ACT_MPLS is not set
+-CONFIG_NET_ACT_VLAN=m
++CONFIG_NET_ACT_VLAN=y
+ CONFIG_NET_ACT_BPF=m
+ # CONFIG_NET_ACT_CONNMARK is not set
+ # CONFIG_NET_ACT_CTINFO is not set
+ CONFIG_NET_ACT_SKBMOD=m
+ CONFIG_NET_ACT_IFE=m
+ CONFIG_NET_ACT_TUNNEL_KEY=m
+-CONFIG_NET_ACT_GATE=m
++CONFIG_NET_ACT_GATE=y
+ CONFIG_NET_IFE_SKBMARK=m
+ CONFIG_NET_IFE_SKBPRIO=m
+ CONFIG_NET_IFE_SKBTCINDEX=m
+@@ -1885,8 +1886,8 @@ CONFIG_PCI_HISI=y
+ CONFIG_PCIE_KIRIN=y
+ # CONFIG_PCIE_DW_PLAT_HOST is not set
+ # CONFIG_PCIE_DW_PLAT_EP is not set
+-CONFIG_PCIE_STM32=m
+-CONFIG_PCIE_STM32_EP=m
++CONFIG_PCIE_STM32=y
++CONFIG_PCIE_STM32_EP=y
+ # end of DesignWare-based PCIe controllers
+ 
+ #
+@@ -2304,7 +2305,7 @@ CONFIG_PCI_ENDPOINT_TEST=m
+ #
+ # EEPROM support
+ #
+-CONFIG_EEPROM_AT24=m
++CONFIG_EEPROM_AT24=y
+ CONFIG_EEPROM_AT25=m
+ # CONFIG_EEPROM_LEGACY is not set
+ # CONFIG_EEPROM_MAX6875 is not set
+@@ -2840,12 +2841,12 @@ CONFIG_SMSC911X=y
+ # CONFIG_SMSC9420 is not set
+ CONFIG_NET_VENDOR_SOCIONEXT=y
+ CONFIG_NET_VENDOR_STMICRO=y
+-CONFIG_STMMAC_ETH=m
++CONFIG_STMMAC_ETH=y
+ # CONFIG_STMMAC_SELFTESTS is not set
+-CONFIG_STMMAC_PLATFORM=m
++CONFIG_STMMAC_PLATFORM=y
+ # CONFIG_DWMAC_DWC_QOS_ETH is not set
+-CONFIG_DWMAC_GENERIC=m
+-CONFIG_DWMAC_STM32=m
++CONFIG_DWMAC_GENERIC=y
++CONFIG_DWMAC_STM32=y
+ # CONFIG_DWMAC_INTEL_PLAT is not set
+ # CONFIG_STMMAC_PCI is not set
+ CONFIG_NET_VENDOR_SUN=y
+@@ -3023,7 +3024,7 @@ CONFIG_MDIO_BUS_MUX_MMIOREG=y
+ #
+ # PCS device drivers
+ #
+-CONFIG_PCS_XPCS=m
++CONFIG_PCS_XPCS=y
+ # end of PCS device drivers
+ 
+ # CONFIG_PPP is not set
+@@ -3335,7 +3336,7 @@ CONFIG_TOUCHSCREEN_ATMEL_MXT=m
+ # CONFIG_TOUCHSCREEN_EGALAX_SERIAL is not set
+ # CONFIG_TOUCHSCREEN_EXC3000 is not set
+ # CONFIG_TOUCHSCREEN_FUJITSU is not set
+-CONFIG_TOUCHSCREEN_GOODIX=m
++CONFIG_TOUCHSCREEN_GOODIX=y
+ # CONFIG_TOUCHSCREEN_HIDEEP is not set
+ # CONFIG_TOUCHSCREEN_HYCON_HY46XX is not set
+ # CONFIG_TOUCHSCREEN_HYNITRON_CSTXXX is not set
+@@ -3610,7 +3611,7 @@ CONFIG_I2C_MUX_PCA954x=y
+ # end of Multiplexer I2C Chip support
+ 
+ CONFIG_I2C_HELPER_AUTO=y
+-CONFIG_I2C_SMBUS=m
++CONFIG_I2C_SMBUS=y
+ CONFIG_I2C_ALGOBIT=y
+ 
+ #
+@@ -3661,7 +3662,7 @@ CONFIG_I2C_GPIO=m
+ CONFIG_I2C_RK3X=y
+ # CONFIG_I2C_SIMTEC is not set
+ # CONFIG_I2C_STM32F4 is not set
+-CONFIG_I2C_STM32F7=m
++CONFIG_I2C_STM32F7=y
+ # CONFIG_I2C_THUNDERX is not set
+ # CONFIG_I2C_XILINX is not set
+ 
+@@ -3814,7 +3815,7 @@ CONFIG_PINCTRL_STM32=y
+ CONFIG_PINCTRL_STM32MP215=y
+ CONFIG_PINCTRL_STM32MP235=y
+ CONFIG_PINCTRL_STM32MP257=y
+-CONFIG_PINCTRL_STM32_HDP=m
++CONFIG_PINCTRL_STM32_HDP=y
+ CONFIG_GPIOLIB=y
+ CONFIG_GPIOLIB_FASTPATH_LIMIT=512
+ CONFIG_OF_GPIO=y
+@@ -3926,7 +3927,7 @@ CONFIG_POWER_RESET_XGENE=y
+ CONFIG_POWER_RESET_SYSCON=y
+ CONFIG_POWER_RESET_SYSCON_POWEROFF=y
+ CONFIG_REBOOT_MODE=y
+-CONFIG_SYSCON_REBOOT_MODE=m
++CONFIG_SYSCON_REBOOT_MODE=y
+ CONFIG_NVMEM_REBOOT_MODE=y
+ CONFIG_POWER_SUPPLY=y
+ # CONFIG_POWER_SUPPLY_DEBUG is not set
+@@ -4065,7 +4066,7 @@ CONFIG_SENSORS_JC42=m
+ # CONFIG_SENSORS_MCP3021 is not set
+ # CONFIG_SENSORS_TC654 is not set
+ # CONFIG_SENSORS_TPS23861 is not set
+-CONFIG_SENSORS_MR75203=m
++CONFIG_SENSORS_MR75203=y
+ # CONFIG_SENSORS_ADCXX is not set
+ # CONFIG_SENSORS_LM63 is not set
+ # CONFIG_SENSORS_LM70 is not set
+@@ -4180,8 +4181,8 @@ CONFIG_THERMAL_EMULATION=y
+ #
+ # STMicroelectronics thermal drivers
+ #
+-# CONFIG_ST_THERMAL is not set
+-# CONFIG_ST_THERMAL_MEMMAP is not set
++CONFIG_ST_THERMAL=y
++CONFIG_ST_THERMAL_MEMMAP=y
+ # end of STMicroelectronics thermal drivers
+ 
+ CONFIG_GENERIC_ADC_THERMAL=m
+@@ -4214,7 +4215,7 @@ CONFIG_DW_WATCHDOG=y
+ # CONFIG_MAX63XX_WATCHDOG is not set
+ # CONFIG_MAX77620_WATCHDOG is not set
+ CONFIG_ARM_SMC_WATCHDOG=y
+-CONFIG_STM32_WATCHDOG=m
++CONFIG_STM32_WATCHDOG=y
+ # CONFIG_ALIM7101_WDT is not set
+ # CONFIG_I6300ESB_WDT is not set
+ # CONFIG_HP_WATCHDOG is not set
+@@ -4356,8 +4357,8 @@ CONFIG_MFD_WM8994=m
+ CONFIG_MFD_ROHM_BD718XX=y
+ # CONFIG_MFD_ROHM_BD71828 is not set
+ # CONFIG_MFD_ROHM_BD957XMUF is not set
+-CONFIG_MFD_STM32_LPTIMER=m
+-CONFIG_MFD_STM32_TIMERS=m
++CONFIG_MFD_STM32_LPTIMER=y
++CONFIG_MFD_STM32_TIMERS=y
+ # CONFIG_MFD_STPMIC1 is not set
+ # CONFIG_MFD_STMFX is not set
+ CONFIG_MFD_WCD934X=m
+@@ -4992,7 +4993,7 @@ CONFIG_DRM_NOUVEAU_BACKLIGHT=y
+ # CONFIG_DRM_QXL is not set
+ # CONFIG_DRM_VIRTIO_GPU is not set
+ CONFIG_DRM_STM=y
+-CONFIG_DRM_STM_DSI=m
++CONFIG_DRM_STM_DSI=y
+ CONFIG_DRM_STM_LVDS=m
+ CONFIG_DRM_PANEL=y
+ 
+@@ -5132,7 +5133,7 @@ CONFIG_DRM_I2C_ADV7511_AUDIO=y
+ CONFIG_DRM_I2C_ADV7511_CEC=y
+ # CONFIG_DRM_CDNS_DSI is not set
+ CONFIG_DRM_CDNS_MHDP8546=m
+-CONFIG_DRM_DW_MIPI_DSI=m
++CONFIG_DRM_DW_MIPI_DSI=y
+ # end of Display Interface Bridges
+ 
+ # CONFIG_DRM_LOONGSON is not set
+@@ -5236,14 +5237,14 @@ CONFIG_FB_MODE_HELPERS=y
+ CONFIG_BACKLIGHT_CLASS_DEVICE=y
+ # CONFIG_BACKLIGHT_KTD253 is not set
+ # CONFIG_BACKLIGHT_KTZ8866 is not set
+-CONFIG_BACKLIGHT_PWM=m
++CONFIG_BACKLIGHT_PWM=y
+ # CONFIG_BACKLIGHT_QCOM_WLED is not set
+ # CONFIG_BACKLIGHT_ADP8860 is not set
+ # CONFIG_BACKLIGHT_ADP8870 is not set
+ # CONFIG_BACKLIGHT_LM3630A is not set
+ # CONFIG_BACKLIGHT_LM3639 is not set
+ CONFIG_BACKLIGHT_LP855X=m
+-CONFIG_BACKLIGHT_GPIO=m
++CONFIG_BACKLIGHT_GPIO=y
+ # CONFIG_BACKLIGHT_LV5207LP is not set
+ # CONFIG_BACKLIGHT_BD6107 is not set
+ # CONFIG_BACKLIGHT_ARCXCNN is not set
+@@ -5263,8 +5264,8 @@ CONFIG_DUMMY_CONSOLE_ROWS=25
+ # end of Console display driver support
+ 
+ CONFIG_LOGO=y
+-# CONFIG_LOGO_LINUX_MONO is not set
+-# CONFIG_LOGO_LINUX_VGA16 is not set
++CONFIG_LOGO_LINUX_MONO=y
++CONFIG_LOGO_LINUX_VGA16=y
+ CONFIG_LOGO_LINUX_CLUT224=y
+ # end of Graphics support
+ 
+@@ -5427,10 +5428,10 @@ CONFIG_SND_SOC_IMX_AUDMUX=m
+ #
+ # STMicroelectronics STM32 SOC audio support
+ #
+-CONFIG_SND_SOC_STM32_SAI=m
+-CONFIG_SND_SOC_STM32_I2S=m
+-CONFIG_SND_SOC_STM32_SPDIFRX=m
+-CONFIG_SND_SOC_STM32_MDF=m
++CONFIG_SND_SOC_STM32_SAI=y
++CONFIG_SND_SOC_STM32_I2S=y
++CONFIG_SND_SOC_STM32_SPDIFRX=y
++CONFIG_SND_SOC_STM32_MDF=y
+ # end of STMicroelectronics STM32 SOC audio support
+ 
+ # CONFIG_SND_SOC_XILINX_I2S is not set
+@@ -5501,7 +5502,7 @@ CONFIG_SND_SOC_CROS_EC_CODEC=m
+ # CONFIG_SND_SOC_CS53L30 is not set
+ # CONFIG_SND_SOC_CX2072X is not set
+ CONFIG_SND_SOC_DA7213=m
+-CONFIG_SND_SOC_DMIC=m
++CONFIG_SND_SOC_DMIC=y
+ CONFIG_SND_SOC_HDMI_CODEC=m
+ CONFIG_SND_SOC_ES7134=m
+ CONFIG_SND_SOC_ES7241=m
+@@ -5509,6 +5510,7 @@ CONFIG_SND_SOC_ES8316=m
+ # CONFIG_SND_SOC_ES8326 is not set
+ # CONFIG_SND_SOC_ES8328_I2C is not set
+ # CONFIG_SND_SOC_ES8328_SPI is not set
++CONFIG_SND_SOC_ES8388=y
+ CONFIG_SND_SOC_GTM601=m
+ # CONFIG_SND_SOC_HDA is not set
+ # CONFIG_SND_SOC_ICS43432 is not set
+@@ -5570,7 +5572,7 @@ CONFIG_SND_SOC_SGTL5000=m
+ CONFIG_SND_SOC_SIMPLE_AMPLIFIER=m
+ CONFIG_SND_SOC_SIMPLE_MUX=m
+ # CONFIG_SND_SOC_SMA1303 is not set
+-CONFIG_SND_SOC_SPDIF=m
++CONFIG_SND_SOC_SPDIF=y
+ # CONFIG_SND_SOC_SRC4XXX_I2C is not set
+ # CONFIG_SND_SOC_SSM2305 is not set
+ # CONFIG_SND_SOC_SSM2518 is not set
+@@ -5665,9 +5667,9 @@ CONFIG_SND_SOC_LPASS_RX_MACRO=m
+ CONFIG_SND_SOC_LPASS_TX_MACRO=m
+ # end of CODEC drivers
+ 
+-CONFIG_SND_SIMPLE_CARD_UTILS=m
++CONFIG_SND_SIMPLE_CARD_UTILS=y
+ CONFIG_SND_SIMPLE_CARD=m
+-CONFIG_SND_AUDIO_GRAPH_CARD=m
++CONFIG_SND_AUDIO_GRAPH_CARD=y
+ CONFIG_SND_AUDIO_GRAPH_CARD2=m
+ # CONFIG_SND_AUDIO_GRAPH_CARD2_CUSTOM_SAMPLE is not set
+ # CONFIG_SND_TEST_COMPONENT is not set
+@@ -5847,7 +5849,7 @@ CONFIG_USB_XHCI_HCD=y
+ CONFIG_USB_XHCI_PCI=m
+ CONFIG_USB_XHCI_PCI_RENESAS=m
+ CONFIG_USB_XHCI_PLATFORM=y
+-CONFIG_USB_STM32_USBH=m
++CONFIG_USB_STM32_USBH=y
+ CONFIG_USB_EHCI_HCD=y
+ CONFIG_USB_EHCI_ROOT_HUB_TT=y
+ CONFIG_USB_EHCI_TT_NEWSCHED=y
+@@ -5944,8 +5946,8 @@ CONFIG_USB_DWC3_DUAL_ROLE=y
+ CONFIG_USB_DWC3_PCI=y
+ CONFIG_USB_DWC3_HAPS=y
+ CONFIG_USB_DWC3_OF_SIMPLE=y
+-CONFIG_USB_DWC3_STM32=m
+-CONFIG_USB_DWC2=m
++CONFIG_USB_DWC3_STM32=y
++CONFIG_USB_DWC2=y
+ # CONFIG_USB_DWC2_HOST is not set
+ 
+ #
+@@ -6390,7 +6392,7 @@ CONFIG_RTC_DRV_ISL1208=m
+ # CONFIG_RTC_DRV_PCF8523 is not set
+ CONFIG_RTC_DRV_PCF85063=m
+ CONFIG_RTC_DRV_PCF85363=m
+-# CONFIG_RTC_DRV_PCF8563 is not set
++CONFIG_RTC_DRV_PCF8563=y
+ # CONFIG_RTC_DRV_PCF8583 is not set
+ CONFIG_RTC_DRV_M41T80=m
+ # CONFIG_RTC_DRV_M41T80_WDT is not set
+@@ -6464,7 +6466,7 @@ CONFIG_RTC_DRV_PL031=y
+ # CONFIG_RTC_DRV_FTRTC010 is not set
+ CONFIG_RTC_DRV_MT6397=m
+ # CONFIG_RTC_DRV_R7301 is not set
+-CONFIG_RTC_DRV_STM32=m
++CONFIG_RTC_DRV_STM32=y
+ 
+ #
+ # HID Sensor RTC drivers
+@@ -6806,8 +6808,8 @@ CONFIG_ARM_SMMU_V3=y
+ CONFIG_REMOTEPROC=y
+ # CONFIG_REMOTEPROC_CDEV is not set
+ # CONFIG_REMOTEPROC_SRM_CORE is not set
+-CONFIG_STM32_RPROC=m
+-CONFIG_STM32_M0_RPROC=m
++CONFIG_STM32_RPROC=y
++CONFIG_STM32_M0_RPROC=y
+ CONFIG_TEE_REMOTEPROC=y
+ # end of Remoteproc drivers
+ 
+@@ -6820,7 +6822,7 @@ CONFIG_RPMSG_CTRL=m
+ CONFIG_RPMSG_NS=y
+ CONFIG_RPMSG_QCOM_GLINK=y
+ CONFIG_RPMSG_QCOM_GLINK_RPM=y
+-CONFIG_RPMSG_VIRTIO=m
++CONFIG_RPMSG_VIRTIO=y
+ # end of Rpmsg drivers
+ 
+ CONFIG_SOUNDWIRE=m
+@@ -6929,10 +6931,10 @@ CONFIG_STM32_FMC2_EBI=y
+ CONFIG_STM32_OMI=y
+ CONFIG_IIO=y
+ CONFIG_IIO_BUFFER=y
+-CONFIG_IIO_BUFFER_CB=m
++CONFIG_IIO_BUFFER_CB=y
+ # CONFIG_IIO_BUFFER_DMA is not set
+ # CONFIG_IIO_BUFFER_DMAENGINE is not set
+-CONFIG_IIO_BUFFER_HW_CONSUMER=m
++CONFIG_IIO_BUFFER_HW_CONSUMER=y
+ CONFIG_IIO_KFIFO_BUF=y
+ CONFIG_IIO_TRIGGERED_BUFFER=y
+ # CONFIG_IIO_CONFIGFS is not set
+@@ -6941,7 +6943,7 @@ CONFIG_IIO_CONSUMERS_PER_TRIGGER=2
+ # CONFIG_IIO_SW_DEVICE is not set
+ # CONFIG_IIO_SW_TRIGGER is not set
+ # CONFIG_IIO_TRIGGERED_EVENT is not set
+-CONFIG_IIO_BACKEND=m
++CONFIG_IIO_BACKEND=y
+ 
+ #
+ # Accelerometers
+@@ -7048,12 +7050,12 @@ CONFIG_QCOM_SPMI_VADC=m
+ CONFIG_QCOM_SPMI_ADC5=m
+ # CONFIG_RICHTEK_RTQ6056 is not set
+ CONFIG_SD_ADC_MODULATOR=m
+-CONFIG_STM32_ADC_CORE=m
+-CONFIG_STM32_ADC=m
++CONFIG_STM32_ADC_CORE=y
++CONFIG_STM32_ADC=y
+ # CONFIG_STM32_DFSDM_CORE is not set
+ # CONFIG_STM32_DFSDM_ADC is not set
+-CONFIG_STM32_MDF_CORE=m
+-CONFIG_STM32_MDF_ADC=m
++CONFIG_STM32_MDF_CORE=y
++CONFIG_STM32_MDF_ADC=y
+ # CONFIG_TI_ADC081C is not set
+ # CONFIG_TI_ADC0832 is not set
+ # CONFIG_TI_ADC084S021 is not set
+@@ -7391,8 +7393,8 @@ CONFIG_IIO_ST_MAGN_SPI_3AXIS=m
+ # Triggers - standalone
+ #
+ # CONFIG_IIO_INTERRUPT_TRIGGER is not set
+-CONFIG_IIO_STM32_LPTIMER_TRIGGER=m
+-CONFIG_IIO_STM32_TIMER_TRIGGER=m
++CONFIG_IIO_STM32_LPTIMER_TRIGGER=y
++CONFIG_IIO_STM32_TIMER_TRIGGER=y
+ # CONFIG_IIO_SYSFS_TRIGGER is not set
+ # end of Triggers - standalone
+ 
+@@ -7508,8 +7510,8 @@ CONFIG_PWM_CROS_EC=m
+ # CONFIG_PWM_DWC is not set
+ # CONFIG_PWM_FSL_FTM is not set
+ # CONFIG_PWM_PCA9685 is not set
+-CONFIG_PWM_STM32=m
+-CONFIG_PWM_STM32_LP=m
++CONFIG_PWM_STM32=y
++CONFIG_PWM_STM32_LP=y
+ # CONFIG_PWM_XILINX is not set
+ 
+ #
+@@ -7562,10 +7564,10 @@ CONFIG_PHY_CADENCE_SIERRA=m
+ # CONFIG_PHY_OCELOT_SERDES is not set
+ CONFIG_PHY_QCOM_USB_HS=m
+ # CONFIG_PHY_QCOM_USB_HSIC is not set
+-CONFIG_PHY_SAMSUNG_USB2=m
+-CONFIG_PHY_STM32_COMBOPHY=m
++CONFIG_PHY_SAMSUNG_USB2=y
++CONFIG_PHY_STM32_COMBOPHY=y
+ # CONFIG_PHY_STM32_USBPHYC is not set
+-CONFIG_PHY_STM32_USB2PHY=m
++CONFIG_PHY_STM32_USB2PHY=y
+ # CONFIG_PHY_TUSB1210 is not set
+ # end of PHY Subsystem
+ 
+@@ -7671,10 +7673,10 @@ CONFIG_PM_OPP=y
+ CONFIG_SLIMBUS=m
+ CONFIG_SLIM_QCOM_CTRL=m
+ CONFIG_INTERCONNECT=y
+-CONFIG_COUNTER=m
++CONFIG_COUNTER=y
+ # CONFIG_INTERRUPT_CNT is not set
+-CONFIG_STM32_LPTIMER_CNT=m
+-CONFIG_STM32_TIMER_CNT=m
++CONFIG_STM32_LPTIMER_CNT=y
++CONFIG_STM32_TIMER_CNT=y
+ # CONFIG_MOST is not set
+ # CONFIG_PECI is not set
+ CONFIG_HTE=y
+diff --git a/sound/soc/codecs/Kconfig b/sound/soc/codecs/Kconfig
+index 141558758..d5488e4c8 100644
+--- a/sound/soc/codecs/Kconfig
++++ b/sound/soc/codecs/Kconfig
+@@ -108,6 +108,7 @@ config SND_SOC_ALL_CODECS
+ 	imply SND_SOC_DMIC
+ 	imply SND_SOC_ES8316
+ 	imply SND_SOC_ES8326
++	imply SND_SOC_ES8388
+ 	imply SND_SOC_ES8328_SPI
+ 	imply SND_SOC_ES8328_I2C
+ 	imply SND_SOC_ES7134
+@@ -1058,6 +1059,10 @@ config SND_SOC_ES8326
+ 	tristate "Everest Semi ES8326 CODEC"
+ 	depends on I2C
+ 
++config SND_SOC_ES8388
++	tristate "Everest Semi ES8388 CODEC"
++	depends on I2C
++
+ config SND_SOC_ES8328
+ 	tristate
+ 
+diff --git a/sound/soc/codecs/Makefile b/sound/soc/codecs/Makefile
+index a87e56938..f767184cf 100644
+--- a/sound/soc/codecs/Makefile
++++ b/sound/soc/codecs/Makefile
+@@ -117,6 +117,7 @@ snd-soc-es7241-objs := es7241.o
+ snd-soc-es8316-objs := es8316.o
+ snd-soc-es8326-objs := es8326.o
+ snd-soc-es8328-objs := es8328.o
++snd-soc-es8388-objs := es8388.o
+ snd-soc-es8328-i2c-objs := es8328-i2c.o
+ snd-soc-es8328-spi-objs := es8328-spi.o
+ snd-soc-gtm601-objs := gtm601.o
+@@ -503,6 +504,7 @@ obj-$(CONFIG_SND_SOC_ES7241)	+= snd-soc-es7241.o
+ obj-$(CONFIG_SND_SOC_ES8316)    += snd-soc-es8316.o
+ obj-$(CONFIG_SND_SOC_ES8326)    += snd-soc-es8326.o
+ obj-$(CONFIG_SND_SOC_ES8328)	+= snd-soc-es8328.o
++obj-$(CONFIG_SND_SOC_ES8388)	+= snd-soc-es8388.o
+ obj-$(CONFIG_SND_SOC_ES8328_I2C)+= snd-soc-es8328-i2c.o
+ obj-$(CONFIG_SND_SOC_ES8328_SPI)+= snd-soc-es8328-spi.o
+ obj-$(CONFIG_SND_SOC_GTM601)    += snd-soc-gtm601.o
+diff --git a/sound/soc/codecs/es8388.c b/sound/soc/codecs/es8388.c
+new file mode 100755
+index 000000000..e5291ae78
+--- /dev/null
++++ b/sound/soc/codecs/es8388.c
+@@ -0,0 +1,993 @@
++/*
++ * es8388.c -- es8388 ALSA SoC audio driver
++ *
++ * Copyright (c) 2022 Rockchip Electronics Co. Ltd.
++ *
++ * Author: Mark Brown <will@everset-semi.com>
++ * Author: Jianqun Xu <jay.xu@rock-chips.com>
++ * Author: Nickey Yang <nickey.yang@rock-chips.com>
++ *
++ * This program is free software; you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License version 2 as
++ * published by the Free Software Foundation.
++ */
++
++#include <linux/module.h>
++#include <linux/clk.h>
++#include <linux/delay.h>
++#include <linux/i2c.h>
++#include <sound/pcm_params.h>
++#include <sound/tlv.h>
++#include <sound/soc.h>
++#include <sound/soc-dapm.h>
++#include <linux/gpio.h>
++#include <linux/interrupt.h>
++#include <linux/irq.h>
++#include <linux/regmap.h>
++#include "es8388.h"
++#include "es_comp.h"
++
++#define INVALID_GPIO -1
++
++#define ES8388_CODEC_SET_SPK    1
++#define ES8388_CODEC_SET_HP    2
++
++#define es8388_DEF_VOL    0x1b
++
++static const char * const es8388_supply_names[] = {
++	"DVDD",
++	"PVDD",
++	"AVDD",
++	"HPVDD",
++};
++
++/* codec private data */
++struct es8388_priv {
++    unsigned int sysclk;
++    struct clk *mclk;
++    struct regmap *regmap;
++    struct gpio_desc *spk_ctl_gpio;
++    struct gpio_desc *hp_det_gpio;
++    struct i2c_client *i2c;
++    struct regulator_bulk_data supplies[ARRAY_SIZE(es8388_supply_names)];
++    struct snd_soc_component *component;
++
++    bool muted;
++    bool hp_inserted;
++    bool spk_gpio_level;
++    bool hp_det_level;
++
++    struct delayed_work pcm_pop_work;
++};
++
++static struct es8388_priv *es8388_private;
++static int es8388_set_gpio(int gpio, bool level)
++{
++    struct es8388_priv *es8388 = es8388_private;
++
++    if (!es8388)
++        return 0;
++
++    if ((gpio & ES8388_CODEC_SET_SPK) && es8388
++        && es8388->spk_ctl_gpio != NULL) {
++        gpiod_set_value(es8388->spk_ctl_gpio, level);
++    }
++
++    return 0;
++}
++
++static irqreturn_t hp_det_irq_handler(int irq, void *dev_id)
++{
++    struct es8388_priv *es8388 = es8388_private;
++
++    if (gpiod_get_value(es8388->hp_det_gpio))
++        es8388->hp_inserted = 0;
++    else
++        es8388->hp_inserted = 1;
++
++    if (es8388->muted == 0) {
++        if (es8388->hp_det_level != es8388->hp_inserted)
++            es8388_set_gpio(ES8388_CODEC_SET_SPK, !es8388->spk_gpio_level);
++        else
++            es8388_set_gpio(ES8388_CODEC_SET_SPK, es8388->spk_gpio_level);
++    }
++    return IRQ_HANDLED;
++}
++
++static int es8388_reset(struct snd_soc_component *codec)
++{
++    snd_soc_write(codec, ES8388_CONTROL1, 0x80);
++    return snd_soc_write(codec, ES8388_CONTROL1, 0x00);
++}
++
++static void pcm_pop_work_events(struct work_struct *work)
++{
++    struct es8388_priv *es8388 =
++        container_of(work, struct es8388_priv, pcm_pop_work.work);
++    /* open dac output here */
++    regmap_write(es8388->regmap, 0x04, 0x3c);
++}
++
++/* dapm controls */
++static const char *const es8388_line_texts[] = {
++    "Line 1", "Line 2", "PGA"
++};
++
++static const unsigned int es8388_line_values[] = {
++    0, 1, 3
++};
++
++static const char *const es8388_pga_sell[] = { "Line 1L", "Line 2L", "NC", "DifferentialL" };
++static const char *const es8388_pga_selr[] = { "Line 1R", "Line 2R", "NC", "DifferentialR" };
++static const char *const es8388_lin_sell[] = {"Line 1L", "Line 2L", "NC", "MicL"};
++static const char *const es8388_lin_selr[] = {"Line 1R", "Line 2R", "NC", "MicR"};
++
++static const char *const stereo_3d_txt[] = { "No 3D  ", "Level 1", "Level 2", "Level 3",
++    "Level 4", "Level 5", "Level 6", "Level 7" };
++static const char *const alc_func_txt[] = { "Off", "Right", "Left", "Stereo" };
++static const char *const ng_type_txt[] = { "Constant PGA Gain", "Mute ADC Output" };
++static const char *const deemph_txt[] = { "None", "32Khz", "44.1Khz", "48Khz" };
++static const char *const adcpol_txt[] =    {
++    "Normal", "L Invert", "R Invert", "L + R Invert" };
++static const char *const es8388_mono_mux[] = {
++    "Stereo", "Mono (Left)", "Mono (Right)" };
++static const char *const es8388_diff_sel[] = { "Line 1", "Line 2" };
++
++static SOC_ENUM_SINGLE_DECL(es8388_left_dac_enum, ES8388_ADCCONTROL2, 6, es8388_pga_sell);
++static SOC_ENUM_SINGLE_DECL(es8388_right_dac_enum, ES8388_ADCCONTROL2, 4, es8388_pga_selr);
++static SOC_ENUM_SINGLE_DECL(es8388_diff_enum, ES8388_ADCCONTROL3, 7, es8388_diff_sel);
++static SOC_ENUM_SINGLE_DECL(es8388_llin_enum, ES8388_DACCONTROL16, 3, es8388_lin_sell);
++static SOC_ENUM_SINGLE_DECL(es8388_rlin_enum, ES8388_DACCONTROL16, 0, es8388_lin_selr);
++static SOC_ENUM_SINGLE_DECL(es8388_mono_enum, ES8388_ADCCONTROL3, 3, es8388_mono_mux);
++
++static const struct soc_enum es8388_enum[] = {
++    SOC_VALUE_ENUM_SINGLE(ES8388_DACCONTROL16, 3, 7, ARRAY_SIZE(es8388_line_texts),
++                es8388_line_texts, es8388_line_values),    /* LLINE */
++    SOC_VALUE_ENUM_SINGLE(ES8388_DACCONTROL16, 0, 7, ARRAY_SIZE(es8388_line_texts),
++                es8388_line_texts, es8388_line_values),    /* RLINE */
++    SOC_VALUE_ENUM_SINGLE(ES8388_ADCCONTROL2, 6, 3, ARRAY_SIZE(es8388_pga_sell),
++                es8388_line_texts, es8388_line_values),    /* Left PGA Mux */
++    SOC_VALUE_ENUM_SINGLE(ES8388_ADCCONTROL2, 4, 3, ARRAY_SIZE(es8388_pga_sell),
++                es8388_line_texts, es8388_line_values),    /* Right PGA Mux */
++    SOC_ENUM_SINGLE(ES8388_DACCONTROL7, 2, 8, stereo_3d_txt),    /* stereo-3d */
++    SOC_ENUM_SINGLE(ES8388_ADCCONTROL10, 6, 4, alc_func_txt),    /* alc func */
++    SOC_ENUM_SINGLE(ES8388_ADCCONTROL14, 1, 2, ng_type_txt),    /* noise gate type */
++    SOC_ENUM_SINGLE(ES8388_DACCONTROL6, 6, 4, deemph_txt),    /* Playback De-emphasis */
++    SOC_ENUM_SINGLE(ES8388_ADCCONTROL6, 6, 4, adcpol_txt),
++    SOC_ENUM_SINGLE(ES8388_ADCCONTROL3, 3, 3, es8388_mono_mux),
++    SOC_ENUM_SINGLE(ES8388_ADCCONTROL3, 7, 2, es8388_diff_sel),
++};
++
++static const DECLARE_TLV_DB_SCALE(pga_tlv, 0, 300, 0);
++static const DECLARE_TLV_DB_SCALE(adc_tlv, -9600, 50, 1);
++static const DECLARE_TLV_DB_SCALE(dac_tlv, -9600, 50, 1);
++static const DECLARE_TLV_DB_SCALE(out_tlv, -4500, 150, 0);
++static const DECLARE_TLV_DB_SCALE(bypass_tlv, 0, 300, 0);
++static const DECLARE_TLV_DB_SCALE(bypass_tlv2, -15, 300, 0);
++
++static const struct snd_kcontrol_new
++    es8388_left_dac_mux_controls = SOC_DAPM_ENUM("Route", es8388_left_dac_enum);
++static const struct snd_kcontrol_new
++    es8388_right_dac_mux_controls = SOC_DAPM_ENUM("Route", es8388_right_dac_enum);
++static const struct snd_kcontrol_new
++    es8388_diffmux_controls = SOC_DAPM_ENUM("Route2", es8388_diff_enum);
++
++static const struct snd_kcontrol_new es8388_snd_controls[] = {
++    SOC_ENUM("3D Mode", es8388_enum[4]),
++    SOC_SINGLE("ALC Capture Target Volume", ES8388_ADCCONTROL11, 4, 15, 0),
++    SOC_SINGLE("ALC Capture Max PGA", ES8388_ADCCONTROL10, 3, 7, 0),
++    SOC_SINGLE("ALC Capture Min PGA", ES8388_ADCCONTROL10, 0, 7, 0),
++    SOC_ENUM("ALC Capture Function", es8388_enum[5]),
++    SOC_SINGLE("ALC Capture ZC Switch", ES8388_ADCCONTROL13, 6, 1, 0),
++    SOC_SINGLE("ALC Capture Hold Time", ES8388_ADCCONTROL11, 0, 15, 0),
++    SOC_SINGLE("ALC Capture Decay Time", ES8388_ADCCONTROL12, 4, 15, 0),
++    SOC_SINGLE("ALC Capture Attack Time", ES8388_ADCCONTROL12, 0, 15, 0),
++    SOC_SINGLE("ALC Capture NG Threshold", ES8388_ADCCONTROL14, 3, 31, 0),
++    SOC_ENUM("ALC Capture NG Type", es8388_enum[6]),
++    SOC_SINGLE("ALC Capture NG Switch", ES8388_ADCCONTROL14, 0, 1, 0),
++    SOC_SINGLE("ZC Timeout Switch", ES8388_ADCCONTROL13, 6, 1, 0),
++    SOC_DOUBLE_R_TLV("Capture Digital Volume", ES8388_ADCCONTROL8,
++             ES8388_ADCCONTROL9, 0, 192, 1, adc_tlv),
++    SOC_SINGLE("Capture Mute", ES8388_ADCCONTROL7, 2, 1, 0),
++    SOC_SINGLE_TLV("Left Channel Capture Volume", ES8388_ADCCONTROL1, 4, 8,
++               0, bypass_tlv),
++    SOC_SINGLE_TLV("Right Channel Capture Volume", ES8388_ADCCONTROL1, 0,
++               8, 0, bypass_tlv),
++    SOC_ENUM("Playback De-emphasis", es8388_enum[7]),
++    SOC_ENUM("Capture Polarity", es8388_enum[8]),
++    SOC_DOUBLE_R_TLV("PCM Volume", ES8388_DACCONTROL4, ES8388_DACCONTROL5,
++             0, 192, 1, dac_tlv),
++    SOC_SINGLE_TLV("Left Mixer Left Bypass Volume", ES8388_DACCONTROL17, 3,
++               7, 1, bypass_tlv2),
++    SOC_SINGLE_TLV("Right Mixer Right Bypass Volume", ES8388_DACCONTROL20,
++               3, 7, 1, bypass_tlv2),
++    SOC_DOUBLE_R_TLV("Output 1 Playback Volume", ES8388_DACCONTROL24,
++             ES8388_DACCONTROL25, 0, 33, 0, out_tlv),
++    SOC_DOUBLE_R_TLV("Output 2 Playback Volume", ES8388_DACCONTROL26,
++             ES8388_DACCONTROL27, 0, 33, 0, out_tlv),
++};
++
++static const struct snd_kcontrol_new es8388_left_line_controls =
++SOC_DAPM_ENUM("LLIN Mux", es8388_llin_enum);
++
++static const struct snd_kcontrol_new es8388_right_line_controls =
++SOC_DAPM_ENUM("RLIN Mux", es8388_rlin_enum);
++/* Mono ADC Mux */
++static const struct snd_kcontrol_new es8388_monomux_controls =
++SOC_DAPM_ENUM("Mono Mux", es8388_mono_enum);
++
++/* Right PGA Mux */
++static const struct snd_kcontrol_new es8388_right_pga_controls =
++SOC_DAPM_ENUM("Route", es8388_enum[3]);
++
++/* Left Mixer */
++static const struct snd_kcontrol_new es8388_left_mixer_controls[] = {
++    SOC_DAPM_SINGLE("Left Playback Switch", ES8388_DACCONTROL17, 7, 1, 0),
++    SOC_DAPM_SINGLE("Left Bypass Switch", ES8388_DACCONTROL17, 6, 1, 0),
++    // SOC_DAPM_SINGLE("Left Playback Switch", SND_SOC_NOPM, 7, 1, 0),
++    // SOC_DAPM_SINGLE("Left Bypass Switch", SND_SOC_NOPM, 6, 1, 0),
++};
++
++/* Right Mixer */
++static const struct snd_kcontrol_new es8388_right_mixer_controls[] = {
++    SOC_DAPM_SINGLE("Right Playback Switch", ES8388_DACCONTROL20, 7, 1, 0),
++    SOC_DAPM_SINGLE("Right Bypass Switch", ES8388_DACCONTROL20, 6, 1, 0),
++    // SOC_DAPM_SINGLE("Right Playback Switch", SND_SOC_NOPM, 7, 1, 0),
++    // SOC_DAPM_SINGLE("Right Bypass Switch", SND_SOC_NOPM, 6, 1, 0),
++};
++
++static int mclk_event(struct snd_soc_dapm_widget *w,
++		      struct snd_kcontrol *kcontrol, int event)
++{
++    struct es8388_priv *es8388 = es8388_private;
++
++	switch (event) {
++	case SND_SOC_DAPM_PRE_PMU:
++		return clk_prepare_enable(es8388->mclk);
++	case SND_SOC_DAPM_POST_PMD:
++		/* Delay mclk shutdown to fulfill power-down sequence requirements */
++		msleep(20);
++		clk_disable_unprepare(es8388->mclk);
++		break;
++	}
++
++	return 0;
++}
++
++static const struct snd_soc_dapm_widget es8388_dapm_widgets[] = {
++    SND_SOC_DAPM_INPUT("LINPUT1"),
++    SND_SOC_DAPM_INPUT("LINPUT2"),
++    SND_SOC_DAPM_INPUT("RINPUT1"),
++    SND_SOC_DAPM_INPUT("RINPUT2"),
++    SND_SOC_DAPM_MUX("Left PGA Mux", SND_SOC_NOPM, 0, 0,
++             &es8388_left_dac_mux_controls),
++    SND_SOC_DAPM_MUX("Right PGA Mux", SND_SOC_NOPM, 0, 0,
++             &es8388_right_dac_mux_controls),
++    SND_SOC_DAPM_MICBIAS("Mic Bias", ES8388_ADCPOWER, 3, 1),
++
++    SND_SOC_DAPM_MUX("Differential Mux", SND_SOC_NOPM, 0, 0,
++             &es8388_diffmux_controls),
++
++    SND_SOC_DAPM_MUX("Left ADC Mux", SND_SOC_NOPM, 0, 0,
++             &es8388_monomux_controls),
++    SND_SOC_DAPM_MUX("Right ADC Mux", SND_SOC_NOPM, 0, 0,
++             &es8388_monomux_controls),
++
++    SND_SOC_DAPM_MUX("Left Line Mux", SND_SOC_NOPM, 0, 0,
++             &es8388_left_line_controls),
++    SND_SOC_DAPM_MUX("Right Line Mux", SND_SOC_NOPM, 0, 0,
++             &es8388_right_line_controls),
++    
++    SND_SOC_DAPM_ADC("Right ADC", "Right Capture", ES8388_ADCPOWER, 4, 1),
++    SND_SOC_DAPM_ADC("Left ADC", "Left Capture", ES8388_ADCPOWER, 5, 1),
++
++    SND_SOC_DAPM_DAC("Right DAC", "Right Playback", SND_SOC_NOPM, 0, 0),
++    SND_SOC_DAPM_DAC("Left DAC", "Left Playback", SND_SOC_NOPM, 0, 0),
++
++    SND_SOC_DAPM_MIXER("Left Mixer", SND_SOC_NOPM, 0, 0,
++               &es8388_left_mixer_controls[0],
++               ARRAY_SIZE(es8388_left_mixer_controls)),
++    SND_SOC_DAPM_MIXER("Right Mixer", SND_SOC_NOPM, 0, 0,
++               &es8388_right_mixer_controls[0],
++               ARRAY_SIZE(es8388_right_mixer_controls)),
++    SND_SOC_DAPM_PGA("Right ADC Power", ES8388_ADCPOWER, 6, 1, NULL, 0),
++    SND_SOC_DAPM_PGA("Left ADC Power", ES8388_ADCPOWER, 7, 1, NULL, 0),
++    SND_SOC_DAPM_PGA("Right Out 2", SND_SOC_NOPM, 0, 0, NULL, 0),
++    SND_SOC_DAPM_PGA("Left Out 2", SND_SOC_NOPM, 0, 0, NULL, 0),
++    SND_SOC_DAPM_PGA("Right Out 1", SND_SOC_NOPM, 0, 0, NULL, 0),
++    SND_SOC_DAPM_PGA("Left Out 1", SND_SOC_NOPM, 0, 0, NULL, 0),
++    SND_SOC_DAPM_PGA("LAMP", ES8388_ADCCONTROL1, 4, 0, NULL, 0),
++    SND_SOC_DAPM_PGA("RAMP", ES8388_ADCCONTROL1, 0, 0, NULL, 0),
++    
++    SND_SOC_DAPM_OUTPUT("LOUT1"),
++    SND_SOC_DAPM_OUTPUT("ROUT1"),
++    SND_SOC_DAPM_OUTPUT("LOUT2"),
++    SND_SOC_DAPM_OUTPUT("ROUT2"),
++    SND_SOC_DAPM_OUTPUT("VREF"),
++};
++
++static const struct snd_soc_dapm_widget es8388_dapm_mclk_widgets[] = {
++	SND_SOC_DAPM_SUPPLY("MCLK", SND_SOC_NOPM, 0, 0, mclk_event,
++			    SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMD),
++};
++
++static const struct snd_soc_dapm_route audio_map[] = {
++
++    {"Left PGA Mux", "Line 1L", "LINPUT1"},
++    {"Left PGA Mux", "Line 2L", "LINPUT2"},
++    {"Left PGA Mux", "DifferentialL", "Differential Mux"},
++
++    {"Right PGA Mux", "Line 1R", "RINPUT1"},
++    {"Right PGA Mux", "Line 2R", "RINPUT2"},
++    {"Right PGA Mux", "DifferentialR", "Differential Mux"},
++
++    {"Differential Mux", "Line 1", "LINPUT1"},
++    {"Differential Mux", "Line 1", "RINPUT1"},
++    {"Differential Mux", "Line 2", "LINPUT2"},
++    {"Differential Mux", "Line 2", "RINPUT2"},
++
++    {"Left ADC Mux", "Stereo", "Right PGA Mux"},
++    {"Left ADC Mux", "Stereo", "Left PGA Mux"},
++    {"Left ADC Mux", "Mono (Left)", "Left PGA Mux"},
++
++    {"Right ADC Mux", "Stereo", "Left PGA Mux"},
++    {"Right ADC Mux", "Stereo", "Right PGA Mux"},
++    {"Right ADC Mux", "Mono (Right)", "Right PGA Mux"},
++
++    {"Left ADC Power", NULL, "Left ADC Mux"},
++    {"Right ADC Power", NULL, "Right ADC Mux"},
++    {"Left ADC", NULL, "Left ADC Power"},
++    {"Right ADC", NULL, "Right ADC Power"},
++    
++    {"Left Line Mux", "Line 1L", "LINPUT1"},
++    {"Left Line Mux", "Line 2L", "LINPUT2"},
++    {"Left Line Mux", "MicL", "Left PGA Mux"},
++
++    {"Right Line Mux", "Line 1R", "RINPUT1"},
++    {"Right Line Mux", "Line 2R", "RINPUT2"},
++    {"Right Line Mux", "MicR", "Right PGA Mux"},
++    
++    {"Left Mixer", "Left Playback Switch", "Left DAC"},
++    {"Left Mixer", "Left Bypass Switch", "Left Line Mux"},
++
++    {"Right Mixer", "Right Playback Switch", "Right DAC"},
++    {"Right Mixer", "Right Bypass Switch", "Right Line Mux"},
++    
++    {"Left Out 1", NULL, "Left Mixer"},
++    {"LOUT1", NULL, "Left Out 1"},
++    {"Right Out 1", NULL, "Right Mixer"},
++    {"ROUT1", NULL, "Right Out 1"},
++
++    {"Left Out 2", NULL, "Left Mixer"},
++    {"LOUT2", NULL, "Left Out 2"},
++    {"Right Out 2", NULL, "Right Mixer"},
++    {"ROUT2", NULL, "Right Out 2"},
++    
++};
++
++struct _coeff_div {
++    u32 mclk;
++    u32 rate;
++    u16 fs;
++    u8 sr:4;
++    u8 usb:1;
++};
++
++/* codec hifi mclk clock divider coefficients */
++static const struct _coeff_div coeff_div[] = {
++    /* 8k */
++    {12288000, 8000, 1536, 0xa, 0x0},
++    {11289600, 8000, 1408, 0x9, 0x0},
++    {18432000, 8000, 2304, 0xc, 0x0},
++    {16934400, 8000, 2112, 0xb, 0x0},
++    {12000000, 8000, 1500, 0xb, 0x1},
++
++    /* 11.025k */
++    {11289600, 11025, 1024, 0x7, 0x0},
++    {16934400, 11025, 1536, 0xa, 0x0},
++    {12000000, 11025, 1088, 0x9, 0x1},
++
++    /* 16k */
++    {12288000, 16000, 768, 0x6, 0x0},
++    {18432000, 16000, 1152, 0x8, 0x0},
++    {12000000, 16000, 750, 0x7, 0x1},
++
++    /* 22.05k */
++    {11289600, 22050, 512, 0x4, 0x0},
++    {16934400, 22050, 768, 0x6, 0x0},
++    {12000000, 22050, 544, 0x6, 0x1},
++
++    /* 32k */
++    {12288000, 32000, 384, 0x3, 0x0},
++    {18432000, 32000, 576, 0x5, 0x0},
++    {12000000, 32000, 375, 0x4, 0x1},
++
++    /* 44.1k */
++    {11289600, 44100, 256, 0x2, 0x0},
++    {16934400, 44100, 384, 0x3, 0x0},
++    {12000000, 44100, 272, 0x3, 0x1},
++
++    /* 48k */
++    {12288000, 48000, 256, 0x2, 0x0},
++    {18432000, 48000, 384, 0x3, 0x0},
++    {12000000, 48000, 250, 0x2, 0x1},
++
++    /* 88.2k */
++    {11289600, 88200, 128, 0x0, 0x0},
++    {16934400, 88200, 192, 0x1, 0x0},
++    {12000000, 88200, 136, 0x1, 0x1},
++
++    /* 96k */
++    {12288000, 96000, 128, 0x0, 0x0},
++    {18432000, 96000, 192, 0x1, 0x0},
++    {12000000, 96000, 125, 0x0, 0x1},
++};
++
++static inline int get_coeff(int mclk, int rate)
++{
++    int i;
++
++    for (i = 0; i < ARRAY_SIZE(coeff_div); i++) {
++        if (coeff_div[i].rate == rate && coeff_div[i].mclk == mclk)
++            return i;
++    }
++
++    return -EINVAL;
++}
++
++/*
++ * Note that this should be called from init rather than from hw_params.
++ */
++static int es8388_set_dai_sysclk(struct snd_soc_dai *codec_dai,
++                 int clk_id, unsigned int freq, int dir)
++{    
++    struct snd_soc_codec *codec = codec_dai->codec;
++    struct es8388_priv *es8388 = snd_soc_codec_get_drvdata(codec);
++
++    es8388->sysclk = freq;
++
++    return 0;
++}
++
++static int es8388_set_dai_fmt(struct snd_soc_dai *codec_dai, unsigned int fmt)
++{    
++    struct snd_soc_codec *codec = codec_dai->codec;
++    u8 iface = 0;
++    u8 adciface = 0;
++    u8 daciface = 0;
++
++    iface = snd_soc_read(codec, ES8388_IFACE);
++    adciface = snd_soc_read(codec, ES8388_ADC_IFACE);
++    daciface = snd_soc_read(codec, ES8388_DAC_IFACE);
++
++    /* set master/slave audio interface */
++    switch (fmt & SND_SOC_DAIFMT_MASTER_MASK) {
++    case SND_SOC_DAIFMT_CBM_CFM:    /* MASTER MODE */
++        iface |= 0x80;
++        break;
++    case SND_SOC_DAIFMT_CBS_CFS:    /* SLAVE MODE */
++        iface &= 0x7F;
++        break;
++    default:
++        dev_err(codec->dev, "Unknown master/slave configuration\n");
++        return -EINVAL;
++    }
++
++    /* interface format */
++    switch (fmt & SND_SOC_DAIFMT_FORMAT_MASK) {
++    case SND_SOC_DAIFMT_I2S:
++        adciface &= 0xFC;
++        daciface &= 0xF9;
++        break;
++    case SND_SOC_DAIFMT_RIGHT_J:
++        return -EINVAL;
++    case SND_SOC_DAIFMT_LEFT_J:
++        break;
++    case SND_SOC_DAIFMT_DSP_A:
++        break;
++    case SND_SOC_DAIFMT_DSP_B:
++        break;
++    default:
++        dev_err(codec->dev, "invalid DAI format\n");
++        return -EINVAL;
++    }
++
++    /* clock inversion */
++    switch (fmt & SND_SOC_DAIFMT_INV_MASK) {
++    case SND_SOC_DAIFMT_NB_NF:
++        iface &= 0xDF;
++        adciface &= 0xDF;
++        daciface &= 0xBF;
++        break;
++    case SND_SOC_DAIFMT_IB_IF:
++        iface |= 0x20;
++        adciface |= 0x20;
++        daciface |= 0x40;
++        break;
++    case SND_SOC_DAIFMT_IB_NF:
++        iface |= 0x20;
++        adciface &= 0xDF;
++        daciface &= 0xBF;
++        break;
++    case SND_SOC_DAIFMT_NB_IF:
++        iface &= 0xDF;
++        adciface |= 0x20;
++        daciface |= 0x40;
++        break;
++    default:
++        return -EINVAL;
++    }
++
++    snd_soc_component_write(codec, ES8388_IFACE, iface);
++    snd_soc_component_write(codec, ES8388_ADC_IFACE, adciface);
++    snd_soc_component_write(codec, ES8388_DAC_IFACE, daciface);
++
++    return 0;
++}
++
++// static int es8388_pcm_startup(struct snd_pcm_substream *substream,
++//                   struct snd_soc_dai *dai)
++// {
++//     struct snd_soc_codec *codec = dai->codec;
++//     struct es8388_priv *es8388 = snd_soc_codec_get_drvdata(codec);
++//     /* The codec needs mclk/es8388->sysclk value to configure registers.
++//      * remove the following code and change the code in es8388_pcm_hw_params
++//      * according to the mclk configuration.
++//      */
++//     if (!es8388->sysclk) {
++//         dev_err(codec->dev,
++//         "No MCLK configured, configure es8388->sysclk in es8388_pcm_hw_params!\n");
++//         return -EINVAL;
++//     }
++
++//     return 0;
++// }
++
++static int es8388_pcm_hw_params(struct snd_pcm_substream *substream,
++                struct snd_pcm_hw_params *params,
++                struct snd_soc_dai *dai)
++{
++    struct snd_soc_codec *codec = dai->component;
++    struct es8388_priv *es8388 = snd_soc_codec_get_drvdata(codec);
++    u16 srate = snd_soc_read(codec, ES8388_IFACE) & 0x80;
++    u16 adciface = snd_soc_read(codec, ES8388_ADC_IFACE) & 0xE3;
++    u16 daciface = snd_soc_read(codec, ES8388_DAC_IFACE) & 0xC7;
++    int coeff;
++    static bool first = true;
++
++    /* If the es8388->sysclk is a fixed value, for example 12.288M,
++     * set es8388->sysclk = 12288000;
++     * else if es8388->sysclk is some value times lrck, for example 128Fs,
++     * set es8388->sysclk = 128 * params_rate(params);
++     */
++    coeff = get_coeff(es8388->sysclk, params_rate(params));
++    if (coeff < 0) {
++        coeff = get_coeff(es8388->sysclk / 2, params_rate(params));
++        srate |= 0x40;
++    }
++    if (coeff < 0) {
++        dev_err(codec->dev,
++            "Unable to configure sample rate %dHz with %dHz MCLK\n",
++            params_rate(params), es8388->sysclk);
++        return coeff;
++    }
++
++    /* bit size */
++    switch (params_format(params)) {
++    case SNDRV_PCM_FORMAT_S16_LE:
++        adciface |= 0x000C;
++        daciface |= 0x0018;
++        break;
++    case SNDRV_PCM_FORMAT_S20_3LE:
++        adciface |= 0x0004;
++        daciface |= 0x0008;
++        break;
++    case SNDRV_PCM_FORMAT_S24_LE:
++        break;
++    case SNDRV_PCM_FORMAT_S32_LE:
++        adciface |= 0x0010;
++        daciface |= 0x0020;
++        break;
++    }
++
++    /* set iface & srate */
++    snd_soc_write(codec, ES8388_DAC_IFACE, daciface);
++    snd_soc_write(codec, ES8388_ADC_IFACE, adciface);
++
++    if (coeff >= 0) {
++        snd_soc_write(codec, ES8388_IFACE, srate);
++        snd_soc_write(codec, ES8388_ADCCONTROL5,
++                  coeff_div[coeff].sr | (coeff_div[coeff].
++                             usb) << 4);
++        snd_soc_write(codec, ES8388_DACCONTROL2,
++                  coeff_div[coeff].sr | (coeff_div[coeff].
++                             usb) << 4);
++    }
++
++    /* 8k lrck needs special attention */
++    if ((es8388->sysclk/params_rate(params) == 256) |
++        (es8388->sysclk/params_rate(params) == 512)) {
++        /* bypass dll and fast charge */
++        snd_soc_write(codec, 0x37, 0xd0);
++        snd_soc_write(codec, 0x39, 0xd0);
++    } else {
++        /* fast charge only */
++        snd_soc_write(codec, 0x37, 0xc0);
++        snd_soc_write(codec, 0x39, 0xc0);
++    }
++
++    if (first)
++        queue_delayed_work(system_wq, &es8388->pcm_pop_work,
++                    msecs_to_jiffies(2000));
++
++    first = false;
++    return 0;
++}
++
++static int es8388_mute(struct snd_soc_dai *dai, int mute, int direction)
++{
++    struct snd_soc_codec *codec = dai->codec;
++    struct es8388_priv *es8388 = snd_soc_codec_get_drvdata(codec);
++
++    es8388->muted = mute;
++    if (mute) {
++        es8388_set_gpio(ES8388_CODEC_SET_SPK, !es8388->spk_gpio_level);
++        usleep_range(18000, 20000);
++        snd_soc_write(codec, ES8388_DACCONTROL3, 0x06);
++    } else {
++        snd_soc_write(codec, ES8388_DACCONTROL3, 0x02);
++        snd_soc_write(codec, 0x30, es8388_DEF_VOL);
++        snd_soc_write(codec, 0x31, es8388_DEF_VOL);
++        msleep(50);
++        if (!es8388->hp_inserted)
++            es8388_set_gpio(ES8388_CODEC_SET_SPK, es8388->spk_gpio_level);
++        usleep_range(18000, 20000);
++    }
++    return 0;
++}
++
++static int es8388_set_bias_level(struct snd_soc_codec *codec,
++                 enum snd_soc_bias_level level)
++{
++    struct es8388_priv *es8388 = snd_soc_codec_get_drvdata(codec);
++    int ret;
++
++    switch (level) {
++    case SND_SOC_BIAS_ON:
++        dev_dbg(codec->dev, "%s on\n", __func__);
++        break;
++    case SND_SOC_BIAS_PREPARE:
++        dev_dbg(codec->dev, "%s prepare\n", __func__);
++        if (IS_ERR(es8388->mclk))
++            break;
++        if (snd_soc_codec_get_bias_level(codec) == SND_SOC_BIAS_ON) {
++            clk_disable_unprepare(es8388->mclk);
++        } else {
++            ret = clk_prepare_enable(es8388->mclk);
++            if (ret)
++                return ret;
++        }
++        snd_soc_write(codec, ES8388_ANAVOLMANAG, 0x7C);
++        snd_soc_write(codec, ES8388_CHIPLOPOW1, 0x00);
++        snd_soc_write(codec, ES8388_CHIPLOPOW2, 0x00);
++        snd_soc_write(codec, ES8388_CHIPPOWER, 0x00);
++        snd_soc_write(codec, ES8388_ADCPOWER, 0x59);
++        break;
++    case SND_SOC_BIAS_STANDBY:
++        dev_dbg(codec->dev, "%s standby\n", __func__);
++        snd_soc_write(codec, ES8388_ANAVOLMANAG, 0x7C);
++        snd_soc_write(codec, ES8388_CHIPLOPOW1, 0x00);
++        snd_soc_write(codec, ES8388_CHIPLOPOW2, 0x00);
++        snd_soc_write(codec, ES8388_CHIPPOWER, 0x00);
++        snd_soc_write(codec, ES8388_ADCPOWER, 0x59);
++        break;
++    case SND_SOC_BIAS_OFF:
++        if (es8388->mclk)
++            clk_disable_unprepare(es8388->mclk);
++        dev_dbg(codec->dev, "%s off\n", __func__);
++        snd_soc_write(codec, ES8388_ADCPOWER, 0xFF);
++        //snd_soc_write(codec, ES8388_DACPOWER, 0xC0);
++        snd_soc_write(codec, ES8388_CHIPLOPOW1, 0xFF);
++        snd_soc_write(codec, ES8388_CHIPLOPOW2, 0xFF);
++        snd_soc_write(codec, ES8388_CHIPPOWER, 0xFF);
++        snd_soc_write(codec, ES8388_ANAVOLMANAG, 0x7B);
++        break;
++    }
++        return 0;
++}
++
++static int es8388_of_xlate_dai_id(struct snd_soc_component *component,
++				   struct device_node *endpoint)
++{
++	/* return dai id 0, whatever the endpoint index */
++	return 0;
++}
++
++#define es8388_RATES SNDRV_PCM_RATE_8000_96000
++
++#define es8388_FORMATS (SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S20_3LE |\
++    SNDRV_PCM_FMTBIT_S24_LE | SNDRV_PCM_FORMAT_S32_LE)
++
++static const struct snd_soc_dai_ops es8388_ops = {
++    // .startup = es8388_pcm_startup,
++    .hw_params = es8388_pcm_hw_params,
++    .set_fmt = es8388_set_dai_fmt,
++    .set_sysclk = es8388_set_dai_sysclk,
++    .mute_stream = es8388_mute,
++    .no_capture_mute = 1,
++};
++
++static struct snd_soc_dai_driver es8388_dai = {
++    .name = "ES8388 HiFi",
++    .playback = {
++             .stream_name = "Playback",
++             .channels_min = 1,
++             .channels_max = 2,
++             .rates = es8388_RATES,
++             .formats = es8388_FORMATS,
++             },
++    .capture = {
++            .stream_name = "Capture",
++            .channels_min = 1,
++            .channels_max = 2,
++            .rates = es8388_RATES,
++            .formats = es8388_FORMATS,
++            },
++    .ops = &es8388_ops,
++    // .symmetric_rate = 1,
++};
++
++static int es8388_suspend(struct snd_soc_codec *codec)
++{
++    snd_soc_write(codec, 0x19, 0x06);
++    snd_soc_write(codec, 0x30, 0x00);
++    snd_soc_write(codec, 0x31, 0x00);
++    snd_soc_write(codec, ES8388_ADCPOWER, 0xFF);
++    snd_soc_write(codec, ES8388_DACPOWER, 0xc0);
++    snd_soc_write(codec, ES8388_CHIPPOWER, 0xF3);
++    snd_soc_write(codec, 0x00, 0x00);
++    snd_soc_write(codec, 0x01, 0x58);
++    snd_soc_write(codec, 0x2b, 0x9c);
++    usleep_range(18000, 20000);
++    return 0;
++}
++
++static int es8388_resume(struct snd_soc_codec *codec)
++{
++    snd_soc_write(codec, 0x2b, 0x80);
++    snd_soc_write(codec, 0x01, 0x50);
++    snd_soc_write(codec, 0x00, 0x32);
++    snd_soc_write(codec, ES8388_CHIPPOWER, 0x00);
++    snd_soc_write(codec, ES8388_DACPOWER, 0x3c);
++    snd_soc_write(codec, ES8388_ADCPOWER, 0x59);
++    snd_soc_write(codec, 0x31, es8388_DEF_VOL);
++    snd_soc_write(codec, 0x30, es8388_DEF_VOL);
++    snd_soc_write(codec, 0x19, 0x02);
++    return 0;
++}
++
++static struct snd_soc_codec *es8388_codec;
++static int es8388_probe(struct snd_soc_codec *codec)
++{
++    int ret = 0;
++    struct snd_soc_dapm_context *dapm;
++    // struct es8388_priv *es8388 = es8388_private;
++
++    dapm = snd_soc_component_get_dapm(codec);
++
++	snd_soc_dapm_new_controls(dapm, es8388_dapm_mclk_widgets, 1);
++
++    if (codec == NULL) {
++        dev_err(codec->dev, "Codec device not registered\n");
++        return -ENODEV;
++    }
++
++    es8388_codec = codec;
++    ret = es8388_reset(codec);
++    if (ret < 0) {
++        dev_err(codec->dev, "Failed to issue reset\n");
++        return ret;
++    }
++    
++    snd_soc_write(codec,0x01,0x60);
++    snd_soc_write(codec,0x02,0xF3);
++    snd_soc_write(codec,0x02,0xF0);
++    snd_soc_write(codec,0x2B,0x80);
++    snd_soc_write(codec,0x00,0x36);
++    snd_soc_write(codec,0x08,0x00);
++    snd_soc_write(codec,0x04,0x00);
++    snd_soc_write(codec,0x06,0xC3);
++    snd_soc_write(codec,0x19,0x02);
++    snd_soc_write(codec,0x09,0x00);
++    snd_soc_write(codec,0x0A,0x00);
++    snd_soc_write(codec,0x0B,0x02);
++    snd_soc_write(codec,0x0C,0x0C);
++    snd_soc_write(codec,0x0D,0x02);
++    snd_soc_write(codec,0x10,0x00);
++    snd_soc_write(codec,0x11,0x00);
++    snd_soc_write(codec,0x17,0x18);
++    snd_soc_write(codec,0x18,0x02);
++    snd_soc_write(codec,0x1A,0x00);
++    snd_soc_write(codec,0x1B,0x00);
++    snd_soc_write(codec,0x27,0xB8);
++    snd_soc_write(codec,0x2A,0xB8);
++    snd_soc_write(codec,0x35,0xA0);
++    usleep_range(18000, 20000);
++    snd_soc_write(codec,0x2E,0x1E);
++    snd_soc_write(codec,0x2F,0x1E);
++    snd_soc_write(codec,0x30,0x1E);
++    snd_soc_write(codec,0x31,0x1E);
++    snd_soc_write(codec,0x03,0x09);
++    snd_soc_write(codec,0x02,0x00);
++    usleep_range(18000, 20000);
++    /* open dac output later */
++    // snd_soc_write(codec,0x04,0x3C);
++
++    es8388_set_bias_level(codec, SND_SOC_BIAS_STANDBY);
++
++    return 0;
++}
++
++static const struct regmap_config es8388_regmap_config = {
++    .reg_bits = 8,
++    .val_bits = 8,
++
++    .max_register = 0x4f,
++
++    .cache_type = REGCACHE_RBTREE,
++};
++
++static struct snd_soc_codec_driver soc_codec_dev_es8388 = {
++    .probe = es8388_probe,
++    .suspend = es8388_suspend,
++    .resume = es8388_resume,
++    .set_bias_level = es8388_set_bias_level,
++
++    .dapm_widgets        = es8388_dapm_widgets,
++    .num_dapm_widgets    = ARRAY_SIZE(es8388_dapm_widgets),
++    .dapm_routes        = audio_map,
++    .num_dapm_routes    = ARRAY_SIZE(audio_map),
++    .controls        = es8388_snd_controls,
++    .num_controls        = ARRAY_SIZE(es8388_snd_controls),
++
++	.of_xlate_dai_id	= es8388_of_xlate_dai_id,
++	.idle_bias_on		= 1,
++	.use_pmdown_time	= 1,
++	.endianness		= 1,
++};
++
++static int es8388_i2c_probe(struct i2c_client *i2c)
++{
++    struct es8388_priv *es8388;
++    int ret = -1;
++    int hp_irq = 0;
++
++    es8388 = devm_kzalloc(&i2c->dev, sizeof(struct es8388_priv), GFP_KERNEL);
++    if (!es8388)
++        return -ENOMEM;
++
++    i2c_set_clientdata(i2c, es8388);
++    es8388->i2c = i2c;
++
++    es8388->spk_ctl_gpio = devm_gpiod_get_optional(&i2c->dev,"spk-con",GPIOD_OUT_HIGH);
++	if (IS_ERR(es8388->spk_ctl_gpio)) {
++        dev_err(&i2c->dev, "Failed to get spk-con-gpio descriptor\n");
++    	return PTR_ERR(es8388->spk_ctl_gpio);
++    }
++    
++    es8388->hp_det_gpio = devm_gpiod_get_optional(&i2c->dev, "hp-det", GPIOD_IN);
++    if (IS_ERR(es8388->hp_det_gpio)) {
++        dev_err(&i2c->dev, "Failed to get hp-det-gpio descriptor\n");
++		return PTR_ERR(es8388->hp_det_gpio);
++    }
++
++    hp_irq = gpiod_to_irq(es8388->hp_det_gpio);
++
++    if (hp_irq > 0) {
++		ret = devm_request_threaded_irq(&i2c->dev, hp_irq, NULL,
++						hp_det_irq_handler, IRQ_TYPE_EDGE_BOTH  | IRQF_ONESHOT ,"ES8388", es8388);
++		if (ret < 0) {
++			dev_err(&i2c->dev, "request_irq failed: %d\n", ret);
++			return ret;
++		}
++	}
++
++    /* Enable the following code if there is no mclk.
++     * a clock named "mclk" need to be defined in the dts (see sample dts)
++     *
++     * No need to enable the following code to get mclk if:
++     * 1. sclk/bclk is used as mclk
++     * 2. mclk is controled by soc I2S
++     */
++#if 1
++    es8388->mclk = devm_clk_get(&i2c->dev, "MCLK");
++    if (IS_ERR(es8388->mclk)) {
++        dev_err(&i2c->dev, "%s mclk is missing or invalid\n", __func__);
++        return PTR_ERR(es8388->mclk);
++    }
++
++    ret = clk_prepare_enable(es8388->mclk);
++    if (ret)
++        return ret;
++#endif
++
++	for (int i = 0; i < ARRAY_SIZE(es8388->supplies); i++)
++		es8388->supplies[i].supply = es8388_supply_names[i];
++
++	ret = devm_regulator_bulk_get(&i2c->dev, ARRAY_SIZE(es8388->supplies),
++				      es8388->supplies);
++	if (ret != 0) {
++		dev_err(&i2c->dev, "Failed to request supplies: %d\n", ret);
++		return ret;
++	}
++
++	ret = regulator_bulk_enable(ARRAY_SIZE(es8388->supplies),
++				    es8388->supplies);
++	if (ret != 0) {
++		dev_err(&i2c->dev, "Failed to enable supplies: %d\n", ret);
++		return ret;
++	}
++
++    es8388->regmap = devm_regmap_init_i2c(i2c, &es8388_regmap_config);
++    INIT_DELAYED_WORK(&es8388->pcm_pop_work,
++                pcm_pop_work_events);
++    ret = snd_soc_register_codec(&i2c->dev,
++                     &soc_codec_dev_es8388,
++                     &es8388_dai, 1);
++
++    es8388_private = es8388;
++
++    return ret;
++}
++
++static void es8388_i2c_remove(struct i2c_client *client)
++{
++    snd_soc_unregister_codec(&client->dev);
++}
++
++static const struct i2c_device_id es8388_i2c_id[] = {
++    {"es8388", 0},
++    {}
++};
++
++MODULE_DEVICE_TABLE(i2c, es8388_i2c_id);
++
++void es8388_i2c_shutdown(struct i2c_client *client)
++{
++    // struct es8388_priv *es8388 = es8388_private;
++
++    mdelay(20);
++    snd_soc_write(es8388_codec, ES8388_CONTROL2, 0x58);
++    snd_soc_write(es8388_codec, ES8388_CONTROL1, 0x32);
++    snd_soc_write(es8388_codec, ES8388_CHIPPOWER, 0xf3);
++    snd_soc_write(es8388_codec, ES8388_DACPOWER, 0xc0);
++    mdelay(50);
++    snd_soc_write(es8388_codec, ES8388_DACCONTROL26, 0x00);
++    snd_soc_write(es8388_codec, ES8388_DACCONTROL27, 0x00);
++    mdelay(50);
++    snd_soc_write(es8388_codec, ES8388_CONTROL1, 0x30);
++    snd_soc_write(es8388_codec, ES8388_CONTROL1, 0x34);
++}
++
++static const struct of_device_id es8388_of_match[] = {
++    { .compatible = "everest,es8388", },
++    { .compatible = "alientek,es8388", },
++    { }
++};
++MODULE_DEVICE_TABLE(of, es8388_of_match);
++
++static struct i2c_driver es8388_i2c_driver = {
++    .driver = {
++        .name = "ES8388",
++        .of_match_table = of_match_ptr(es8388_of_match),
++        },
++    .shutdown = es8388_i2c_shutdown,
++    .probe = es8388_i2c_probe,
++    .remove = es8388_i2c_remove,
++    .id_table = es8388_i2c_id,
++};
++module_i2c_driver(es8388_i2c_driver);
++
++MODULE_DESCRIPTION("ASoC es8388 driver");
++MODULE_AUTHOR("Mark Brown <will@everset-semi.com>");
++MODULE_LICENSE("GPL");
+diff --git a/sound/soc/codecs/es8388.h b/sound/soc/codecs/es8388.h
+new file mode 100755
+index 000000000..26696c0dd
+--- /dev/null
++++ b/sound/soc/codecs/es8388.h
+@@ -0,0 +1,152 @@
++/*
++ * Copyright 2005 Openedhand Ltd.
++ *
++ * Author: Richard Purdie <richard@openedhand.com>
++ *
++ * Based on ES8388.h
++ *
++ * This program is free software; you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License version 2 as
++ * published by the Free Software Foundation.
++ *
++ */
++
++#ifndef _ES8388_H
++#define _ES8388_H
++
++#define CONFIG_HHTECH_MINIPMP    1
++
++/* ES8388 register space */
++
++#define ES8388_CONTROL1         0x00
++#define ES8388_CONTROL2         0x01
++#define ES8388_CHIPPOWER        0x02
++#define ES8388_ADCPOWER         0x03
++#define ES8388_DACPOWER         0x04
++#define ES8388_CHIPLOPOW1       0x05
++#define ES8388_CHIPLOPOW2       0x06
++#define ES8388_ANAVOLMANAG      0x07
++#define ES8388_MASTERMODE       0x08
++#define ES8388_ADCCONTROL1      0x09
++#define ES8388_ADCCONTROL2      0x0a
++#define ES8388_ADCCONTROL3      0x0b
++#define ES8388_ADCCONTROL4      0x0c
++#define ES8388_ADCCONTROL5      0x0d
++#define ES8388_ADCCONTROL6      0x0e
++#define ES8388_ADCCONTROL7      0x0f
++#define ES8388_ADCCONTROL8      0x10
++#define ES8388_ADCCONTROL9      0x11
++#define ES8388_ADCCONTROL10     0x12
++#define ES8388_ADCCONTROL11     0x13
++#define ES8388_ADCCONTROL12     0x14
++#define ES8388_ADCCONTROL13     0x15
++#define ES8388_ADCCONTROL14     0x16
++
++#define ES8388_DACCONTROL1      0x17
++#define ES8388_DACCONTROL2      0x18
++#define ES8388_DACCONTROL3      0x19
++#define ES8388_DACCONTROL4      0x1a
++#define ES8388_DACCONTROL5      0x1b
++#define ES8388_DACCONTROL6      0x1c
++#define ES8388_DACCONTROL7      0x1d
++#define ES8388_DACCONTROL8      0x1e
++#define ES8388_DACCONTROL9      0x1f
++#define ES8388_DACCONTROL10     0x20
++#define ES8388_DACCONTROL11     0x21
++#define ES8388_DACCONTROL12     0x22
++#define ES8388_DACCONTROL13     0x23
++#define ES8388_DACCONTROL14     0x24
++#define ES8388_DACCONTROL15     0x25
++#define ES8388_DACCONTROL16     0x26
++#define ES8388_DACCONTROL17     0x27
++#define ES8388_DACCONTROL18     0x28
++#define ES8388_DACCONTROL19     0x29
++#define ES8388_DACCONTROL20     0x2a
++#define ES8388_DACCONTROL21     0x2b
++#define ES8388_DACCONTROL22     0x2c
++#define ES8388_DACCONTROL23     0x2d
++#define ES8388_DACCONTROL24     0x2e
++#define ES8388_DACCONTROL25     0x2f
++#define ES8388_DACCONTROL26     0x30
++#define ES8388_DACCONTROL27     0x31
++#define ES8388_DACCONTROL28     0x32
++#define ES8388_DACCONTROL29     0x33
++#define ES8388_DACCONTROL30     0x34
++
++#define ES8388_LADC_VOL         ES8388_ADCCONTROL8
++#define ES8388_RADC_VOL         ES8388_ADCCONTROL9
++
++#define ES8388_LDAC_VOL         ES8388_DACCONTROL4
++#define ES8388_RDAC_VOL         ES8388_DACCONTROL5
++
++#define ES8388_LOUT1_VOL        ES8388_DACCONTROL24
++#define ES8388_ROUT1_VOL        ES8388_DACCONTROL25
++#define ES8388_LOUT2_VOL        ES8388_DACCONTROL26
++#define ES8388_ROUT2_VOL        ES8388_DACCONTROL27
++
++#define ES8388_ADC_MUTE         ES8388_ADCCONTROL7
++#define ES8388_DAC_MUTE         ES8388_DACCONTROL3
++
++#define ES8388_IFACE            ES8388_MASTERMODE
++
++#define ES8388_ADC_IFACE        ES8388_ADCCONTROL4
++#define ES8388_ADC_SRATE        ES8388_ADCCONTROL5
++
++#define ES8388_DAC_IFACE        ES8388_DACCONTROL1
++#define ES8388_DAC_SRATE        ES8388_DACCONTROL2
++
++
++#define ES8388_CACHEREGNUM      53
++#define ES8388_SYSCLK        0
++
++struct es8388_setup_data {
++    int i2c_bus;
++    unsigned short i2c_address;
++};
++
++#define ES8388_PLL1            0
++#define ES8388_PLL2            1
++
++/* clock inputs */
++#define ES8388_MCLK        0
++#define ES8388_PCMCLK        1
++
++/* clock divider id's */
++#define ES8388_PCMDIV        0
++#define ES8388_BCLKDIV        1
++#define ES8388_VXCLKDIV        2
++
++/* PCM clock dividers */
++#define ES8388_PCM_DIV_1    (0 << 6)
++#define ES8388_PCM_DIV_3    (2 << 6)
++#define ES8388_PCM_DIV_5_5    (3 << 6)
++#define ES8388_PCM_DIV_2    (4 << 6)
++#define ES8388_PCM_DIV_4    (5 << 6)
++#define ES8388_PCM_DIV_6    (6 << 6)
++#define ES8388_PCM_DIV_8    (7 << 6)
++
++/* BCLK clock dividers */
++#define ES8388_BCLK_DIV_1    (0 << 7)
++#define ES8388_BCLK_DIV_2    (1 << 7)
++#define ES8388_BCLK_DIV_4    (2 << 7)
++#define ES8388_BCLK_DIV_8    (3 << 7)
++
++/* VXCLK clock dividers */
++#define ES8388_VXCLK_DIV_1    (0 << 6)
++#define ES8388_VXCLK_DIV_2    (1 << 6)
++#define ES8388_VXCLK_DIV_4    (2 << 6)
++#define ES8388_VXCLK_DIV_8    (3 << 6)
++#define ES8388_VXCLK_DIV_16    (4 << 6)
++
++#define ES8388_DAI_HIFI        0
++#define ES8388_DAI_VOICE        1
++
++#define ES8388_1536FS 1536
++#define ES8388_1024FS    1024
++#define ES8388_768FS    768
++#define ES8388_512FS    512
++#define ES8388_384FS    384
++#define ES8388_256FS    256
++#define ES8388_128FS    128
++
++#endif
+diff --git a/sound/soc/codecs/es_comp.h b/sound/soc/codecs/es_comp.h
+new file mode 100755
+index 000000000..ff0c60973
+--- /dev/null
++++ b/sound/soc/codecs/es_comp.h
+@@ -0,0 +1,32 @@
++#include <linux/version.h>
++#if LINUX_VERSION_CODE > KERNEL_VERSION(4,18,0)
++#define snd_soc_write snd_soc_component_write
++#define snd_soc_codec snd_soc_component
++#define codec component
++#define snd_soc_codec_get_drvdata snd_soc_component_get_drvdata
++#define snd_soc_read snd_soc_component_read
++#define snd_soc_update_bits snd_soc_component_update_bits
++#define snd_soc_codec_driver snd_soc_component_driver
++#define snd_soc_register_codec snd_soc_register_component
++#define snd_soc_unregister_codec snd_soc_unregister_component
++#define snd_soc_codec_get_bias_level snd_soc_component_get_bias_level
++#define snd_soc_cache_sync snd_soc_component_cache_sync
++#define snd_soc_codec_set_drvdata snd_soc_component_set_drvdata
++
++#elif LINUX_VERSION_CODE < KERNEL_VERSION(4,15,0)
++#define snd_soc_component_write snd_soc_write
++#define snd_soc_component snd_soc_codec
++#define component codec
++#define snd_soc_component_get_drvdata snd_soc_codec_get_drvdata
++#define snd_soc_component_read snd_soc_read
++#define snd_soc_component_read32 snd_soc_read
++#define snd_soc_component_update_bits snd_soc_update_bits
++#define snd_soc_component_driver snd_soc_codec_driver
++#define snd_soc_register_component snd_soc_register_codec
++#define snd_soc_unregister_component snd_soc_unregister_codec
++#define snd_soc_component_get_bias_level snd_soc_codec_get_bias_level
++#define snd_soc_component_cache_sync snd_soc_cache_sync
++#define snd_soc_component_set_drvdata snd_soc_codec_set_drvdata
++
++
++#endif
+\ No newline at end of file
+-- 
+2.43.0
+
