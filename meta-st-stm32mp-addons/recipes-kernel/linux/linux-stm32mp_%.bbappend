@@ -29,6 +29,8 @@ SRC_URI += " \
 	file://${LINUX_VERSION}/${LINUX_VERSION}${LINUX_SUBVERSION}/0012-fix-No-soundcards-found-issue.patch \
 	file://${LINUX_VERSION}/${LINUX_VERSION}${LINUX_SUBVERSION}/0013-add-support-CONFIG_BT_RTK_HCIBTUSB.patch \
 	file://${LINUX_VERSION}/${LINUX_VERSION}${LINUX_SUBVERSION}/0014-disable-CONFIG_BT_HCIBTUSB-in-defconfig.patch \
+	file://${LINUX_VERSION}/${LINUX_VERSION}${LINUX_SUBVERSION}/0015-docs-README.patch \
+	file://${LINUX_VERSION}/${LINUX_VERSION}${LINUX_SUBVERSION}/0016-modules-y-m.patch \
     "
 
 # ------------------------------------------------
