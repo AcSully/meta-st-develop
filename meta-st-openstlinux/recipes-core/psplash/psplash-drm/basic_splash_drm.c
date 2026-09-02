@@ -636,11 +636,19 @@ splash_processing(int timeout, int ms) {
 int get_valid_dri_card() {
     int ind = 0;
     char buf_name[32];
+    int fd = -1;
 
     for (ind = 0; ind < 8; ind++) {
         snprintf(buf_name, 32, "/dev/dri/card%d", ind);
         if (access(buf_name, F_OK) == 0) {
-            return ind;
+            fd = open(buf_name, O_RDWR | O_CLOEXEC);
+            if (fd < 0) {
+                continue;
+            } else if (drmIsKMS(fd)) {
+                close(fd);
+                return ind;
+            }
+            close(fd);
         }
     }
     return -1;
@@ -868,9 +876,9 @@ draw_frame(struct modeset_dev *dev, const char *filename)
 
 static long
 get_time_in_microseconds() {
-    struct timeval tv;
-    gettimeofday(&tv, NULL);
-    return tv.tv_sec * 1000000 + tv.tv_usec;
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return ts.tv_sec * 1000000 + ts.tv_nsec / 1000;
 }
 
 // --------------------------------------------- //
@@ -1112,7 +1120,7 @@ next:
 
             x = (iter->width - img_width) / 2;
             y = (iter->height - img_height) / 2;
-            if ((img_width < iter->width) && (img_height < iter->height) )
+            if ((img_width <= iter->width) && (img_height <= iter->height) )
                 splash_draw_image_for_modeset32 (iter, x, y, img_width, img_height,
                     (uint32_t *)pixman_image_get_data(pixman_image));
             else {

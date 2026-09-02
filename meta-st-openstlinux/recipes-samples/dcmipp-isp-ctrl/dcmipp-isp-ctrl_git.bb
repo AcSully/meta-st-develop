@@ -5,8 +5,8 @@ LIC_FILES_CHKSUM = "file://dcmipp-isp-ctrl/COPYING;md5=f8001cce2bab8ab39ddcb1268
 SRC_URI = "git://github.com/STMicroelectronics/st-openstlinux-application.git;protocol=https;branch=main"
 
 # Modify these as desired
-PV = "6.1+git-${@d.getVar("SRCREV")[0:8]}"
-SRCREV = "1ab21d8400036235771d70becdcf6f92b665025d"
+PV = "5.1+git-${@d.getVar("SRCREV")[0:8]}"
+SRCREV = "31551e7487c2c014248462565383e3912c0f9ad5"
 
 S = "${WORKDIR}/git"
 

@@ -11,13 +11,20 @@ DEVICETREE_SUFFIX_ARRAY[optee-programmer-serial]=""
 ### General configuration
 ##################################################################
 ##################################################################
+# Path to SDK environment (where is 'environment-setup-cortexa35-ostl-linux')
+# Usually: /opt/st/stm32mp2/<X.X.X>-openstlinux-<X.X>-yocto-<version_name>-mpu-v<XX.XX.XX>/
+sdk_absolute_path=<SDK absolute path>
+
+# Name of environment setup script for sdk
+sdk_env_file="environment-setup-cortexa35-ostl-linux"
+
 # Configuration for building stm32mp2x-M33TD
 your_board_name="stm32mp215f-dk"
 
-# your_soc_name can be stm32mp21, stm32mp25
+# your_soc_name can be stm32mp21, stm32mp23, stm32mp25
 your_soc_name="stm32mp21"
 
-# Type of securityType of security can be 'optee' or 'opteemin' (optee is preconized)
+# Type of security can be 'optee' or 'opteemin' (optee is preconize for stm32mp2)
 your_storage_boot_scheme_security="optee"
 
 # Type of boot scheme storage used for A35 part, ex.:
@@ -42,19 +49,29 @@ your_storage_boot_scheme_cortex_m="m33td_sdcard"
 your_m33_profile="stm/stm32mp215f_dk"
 
 # Name of project used on M33 processor, ex.:
+#       StarterApp_M33TD
+your_cube_m33td_project_name="StarterApp_M33TD"
+
+# Path for project used on M33 processor, ex.:
 #       Projects/STM32MP215F-DK/Demonstrations/StarterApp_M33TD
+#       Projects/STM32MP235F-DK/Demonstrations/StarterApp_M33TD
+#       Projects/STM32MP257F-DK/Demonstrations/StarterApp_M33TD
 #       Projects/STM32MP257F-EV1/Demonstrations/StarterApp_M33TD
-your_cube_m33td_project="Projects/STM32MP215F-DK/Demonstrations/StarterApp_M33TD"
+your_cube_m33td_project_path="Projects/STM32MP215F-DK/Demonstrations/StarterApp_M33TD"
+
+# Specific cmake flags to apply for Cube M33TD project build, ex.:
+#       -DBUILD_CONFIG=FULL -DBOOT_SPLASHSCREEN=STATIC
+your_cube_m33td_bld_opts=""
 
 # Location to store all the binaries generated
 your_deploy_dir_path="$PWD/output-sdk-stm32mp215f-dk-m33td"
 
-# Define sub build directory (by default set to ../build)
+# Define build subdirectory (by default set to ../build)
 your_build_subdir_path="../build-stm32mp215f-dk-m33td"
 
 PARALLEL_MAKE=-j8
-# paralelle make for linux kernel:
-# ex.: 
+# parallel make for linux kernel:
+# ex.:
 # PARALLEL_MAKE=-j8
 # ----------------------------------------------------------------
 # ----------------------------------------------------------------
@@ -72,9 +89,10 @@ PARALLEL_MAKE=-j8
 
 # ------------------------------
 # Via external dt
-# force external dt path to externaldt env path
+# force external dt path to external-dt env path
 # (EXTDT_DIR can be changed by overwriting the path on external-dt_set funcion)
 externaldt_path=<externaldt_path>
+
 # external dt subpath for Optee
 externaldt_optee_path=stm32mp2/m33-td/optee
 externaldt_optee_programmer_path=stm32mp2/m33-td/optee
@@ -99,12 +117,19 @@ uboot_defconfig=${your_soc_name}_defconfig
 uboot_dt_name=${your_board_name}-cm33tdcid-ostl${DEVICETREE_SUFFIX_ARRAY[${your_storage_boot_scheme_cortex_a}]}
 uboot_programmer_dt_name=${your_board_name}-cm33tdcid-ostl-serial-ca35tdcid
 # TF-A dt name
-tfa_dt_name=${your_board_name}-cm33tdcid-ostl
+tfa_dt_name=${your_board_name}-cm33tdcid-ostl${DEVICETREE_SUFFIX_ARRAY[${your_storage_boot_scheme_cortex_a}]}
 tfa_dt_programmer_name=${your_board_name}-cm33tdcid-ostl-serial-ca35tdcid
+# Linux kernel dt name
+linux_dtb_name=${your_board_name}-cm33tdcid-ostl${DEVICETREE_SUFFIX_ARRAY[${your_storage_boot_scheme_cortex_a}]}
 # TF-M dt name
 tfm_dt_name=${your_board_name}-cm33tdcid-ostl
+
+# Use externaldt suffix (defined via DEVICETREE_SUFFIX_ARRAY)
+use_externaldt_suffix=1
+
 ##################################################################
 ##################################################################
+### End of general configuration
 ##################################################################
 ##################################################################
 

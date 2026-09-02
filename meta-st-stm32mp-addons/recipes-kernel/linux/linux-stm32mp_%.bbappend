@@ -4,7 +4,7 @@ inherit cubemx-stm32mp
 FILESEXTRAPATHS:prepend := "${THISDIR}/linux-stm32mp:"
 
 LINUX_VERSION = "6.6"
-LINUX_SUBVERSION = ".78"
+LINUX_SUBVERSION = ".129"
 LINUX_TARBASE = "linux-${LINUX_VERSION}${LINUX_SUBVERSION}"
 
 # Use the ST-specific defconfig instead of the generic mainline "defconfig".
@@ -15,22 +15,7 @@ LINUX_TARBASE = "linux-${LINUX_VERSION}${LINUX_SUBVERSION}"
 KERNEL_DEFCONFIG = "stm32mp257_defconfig"
 
 SRC_URI += " \
-    file://${LINUX_VERSION}/${LINUX_VERSION}${LINUX_SUBVERSION}/0001-debug-ethernet-phy.patch \
-	file://${LINUX_VERSION}/${LINUX_VERSION}${LINUX_SUBVERSION}/0002-add-alientek-mipi-support.patch \
-	file://${LINUX_VERSION}/${LINUX_VERSION}${LINUX_SUBVERSION}/0003-mipi-panel-kernel-config.patch \
-	file://${LINUX_VERSION}/${LINUX_VERSION}${LINUX_SUBVERSION}/0004-pcie-y-m.patch \
-	file://${LINUX_VERSION}/${LINUX_VERSION}${LINUX_SUBVERSION}/0005-kernel-M-Y.patch \
-	file://${LINUX_VERSION}/${LINUX_VERSION}${LINUX_SUBVERSION}/0006-back-to-ST-config.patch \
-	file://${LINUX_VERSION}/${LINUX_VERSION}${LINUX_SUBVERSION}/0007-add-CONFIG_DRM_PANEL_ALIENTEK_MIPI_LCD-in-stm32mp257.patch \
-	file://${LINUX_VERSION}/${LINUX_VERSION}${LINUX_SUBVERSION}/0008-add-CONFIG_MOTORCOMM_PHY-stm32mp257_defconfig.patch \
-	file://${LINUX_VERSION}/${LINUX_VERSION}${LINUX_SUBVERSION}/0009-add-ST-buildroot-defconfig.patch \
-	file://${LINUX_VERSION}/${LINUX_VERSION}${LINUX_SUBVERSION}/0010-audeo-code-ES8388-ok.patch \
-	file://${LINUX_VERSION}/${LINUX_VERSION}${LINUX_SUBVERSION}/0011-modify-audio-m-y.patch \
-	file://${LINUX_VERSION}/${LINUX_VERSION}${LINUX_SUBVERSION}/0012-fix-No-soundcards-found-issue.patch \
-	file://${LINUX_VERSION}/${LINUX_VERSION}${LINUX_SUBVERSION}/0013-add-support-CONFIG_BT_RTK_HCIBTUSB.patch \
-	file://${LINUX_VERSION}/${LINUX_VERSION}${LINUX_SUBVERSION}/0014-disable-CONFIG_BT_HCIBTUSB-in-defconfig.patch \
-	file://${LINUX_VERSION}/${LINUX_VERSION}${LINUX_SUBVERSION}/0015-docs-README.patch \
-	file://${LINUX_VERSION}/${LINUX_VERSION}${LINUX_SUBVERSION}/0016-modules-y-m.patch \
+    file://${LINUX_VERSION}/${LINUX_VERSION}${LINUX_SUBVERSION}/0001-kernel-panel-es8388-motorcomm-fusb302.patch \
     "
 
 # ------------------------------------------------

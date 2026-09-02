@@ -1,24 +1,25 @@
-From fa3748435002b6cc970e66f035f131bbb5ee0d8d Mon Sep 17 00:00:00 2001
+From 21ad7390290775702239ed8cb51658e4c9adfa0d Mon Sep 17 00:00:00 2001
 From: niuke <sully.niu@outlook.com>
 Date: Fri, 12 Dec 2025 15:22:44 +0800
-Subject: [PATCH 2/3] support alientek mipi panel
+Subject: [PATCH] support alientek mipi panel
 
 ---
  board/st/stm32mp2/stm32mp2.c        | 279 ++++++++++++++++++++++++++
  boot/image-fdt.c                    |  28 +++
  common/menu.c                       |  25 +++
- configs/stm32mp25_defconfig         |   2 +
+ configs/stm32mp25_defconfig         |   3 +
+ drivers/video/Kconfig               |   7 +
  drivers/video/Makefile              |   1 +
  drivers/video/panel-alientek-mipi.c | 290 ++++++++++++++++++++++++++++
  include/configs/stm32mp25_common.h  |   1 +
- 7 files changed, 626 insertions(+)
+ 8 files changed, 634 insertions(+)
  create mode 100755 drivers/video/panel-alientek-mipi.c
 
 diff --git a/board/st/stm32mp2/stm32mp2.c b/board/st/stm32mp2/stm32mp2.c
-index 8ea962ef..0bacb0ef 100644
+index fdffb041..a335b01b 100644
 --- a/board/st/stm32mp2/stm32mp2.c
 +++ b/board/st/stm32mp2/stm32mp2.c
-@@ -611,6 +611,275 @@ int mmc_get_env_dev(void)
+@@ -612,6 +612,275 @@ int mmc_get_env_dev(void)
  	return mmc_get_boot();
  }
  
@@ -294,9 +295,9 @@ index 8ea962ef..0bacb0ef 100644
  int board_late_init(void)
  {
  	const void *fdt_compat;
-@@ -642,6 +911,16 @@ int board_late_init(void)
- 		}
- 	}
+@@ -646,6 +915,16 @@ int board_late_init(void)
+ 	if (CONFIG_IS_ENABLED(FASTBOOT_FLASH_MMC))
+ 		env_set("fastboot.mmcdev", __stringify(CONFIG_FASTBOOT_FLASH_MMC_DEV));
  
 +/******************** ALIENTEK ADD START ********************/
 +#ifdef ALIENTEK_MIPI_RGB_LCD
@@ -410,7 +411,7 @@ index b55cf7b9..81fc09ff 100644
  }
  
 diff --git a/configs/stm32mp25_defconfig b/configs/stm32mp25_defconfig
-index 0c8359a9..1b9b797a 100644
+index 0c8359a9..6a6819a3 100644
 --- a/configs/stm32mp25_defconfig
 +++ b/configs/stm32mp25_defconfig
 @@ -77,6 +77,8 @@ CONFIG_ENV_UBI_VOLUME_REDUND="uboot_config_r"
@@ -422,15 +423,38 @@ index 0c8359a9..1b9b797a 100644
  CONFIG_SYS_64BIT_LBA=y
  CONFIG_BUTTON=y
  CONFIG_BUTTON_GPIO=y
+@@ -195,3 +197,4 @@ CONFIG_FWU_MULTI_BANK_UPDATE=y
+ CONFIG_FWU_MDATA_V2=y
+ # CONFIG_TOOLS_MKEFICAPSULE is not set
+ # CONFIG_TOOLS_MKFWUMDATA is not set
++CONFIG_VIDEO_LCD_ALIENTEK_MIPI=y
+diff --git a/drivers/video/Kconfig b/drivers/video/Kconfig
+index d92d5be8..3800f9a9 100644
+--- a/drivers/video/Kconfig
++++ b/drivers/video/Kconfig
+@@ -547,6 +547,13 @@ config VIDEO_LCD_RENESAS_R69328
+ 	  IPS-LCD module with Renesas R69328 IC. The panel has a 720x1280
+ 	  resolution and uses 24 bit RGB per pixel.
+ 
++config VIDEO_LCD_ALIENTEK_MIPI
++	bool "ALIENTEK MIPI DSI LCD panel support"
++	select VIDEO_MIPI_DSI
++	help
++	Say Y here if you want to enable support for the ALIENTEK MIPI
++	DSI panel used on STM32MP2 boards.
++
+ config VIDEO_LCD_ROCKTECH_HX8394
+ 	bool "ROCKTECH HX8394 DSI LCD panel support"
+ 	depends on VIDEO
 diff --git a/drivers/video/Makefile b/drivers/video/Makefile
-index cd61293d..51e36bc7 100644
+index cd61293d..676f336f 100644
 --- a/drivers/video/Makefile
 +++ b/drivers/video/Makefile
 @@ -77,6 +77,7 @@ obj-$(CONFIG_VIDEO_SIMPLE) += simplefb.o
  obj-$(CONFIG_VIDEO_VESA) += vesa.o
  obj-$(CONFIG_VIDEO_SEPS525) += seps525.o
  obj-$(CONFIG_VIDEO_ZYNQMP_DPSUB) += zynqmp/
-+obj-y += panel-alientek-mipi.o
++obj-$(CONFIG_VIDEO_LCD_ALIENTEK_MIPI) += panel-alientek-mipi.o
  
  obj-y += bridge/
  obj-y += sunxi/

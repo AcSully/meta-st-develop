@@ -1,23 +1,52 @@
-From a8159832782b8109ad61cf21fc1bb6e1d18b954f Mon Sep 17 00:00:00 2001
+From 1c2ebcc4d5d93876b757d603566eb526e24e1a1b Mon Sep 17 00:00:00 2001
 From: niuke <sully.niu@outlook.com>
 Date: Sat, 20 Dec 2025 15:31:55 +0800
-Subject: [PATCH 3/3] uboot support panel w280bf036i dsi 1 lane
+Subject: [PATCH] uboot support panel w280bf036i dsi 1 lane
 
 ---
+ configs/stm32mp25_defconfig          |   1 +
+ drivers/video/Kconfig                |   7 +
  drivers/video/Makefile               |   1 +
  drivers/video/panel-w280bf036i-dsi.c | 261 +++++++++++++++++++++++++++
- 2 files changed, 262 insertions(+)
+ 4 files changed, 270 insertions(+)
  create mode 100755 drivers/video/panel-w280bf036i-dsi.c
 
+diff --git a/configs/stm32mp25_defconfig b/configs/stm32mp25_defconfig
+index 6a6819a3..4a6c0c67 100644
+--- a/configs/stm32mp25_defconfig
++++ b/configs/stm32mp25_defconfig
+@@ -198,3 +198,4 @@ CONFIG_FWU_MDATA_V2=y
+ # CONFIG_TOOLS_MKEFICAPSULE is not set
+ # CONFIG_TOOLS_MKFWUMDATA is not set
+ CONFIG_VIDEO_LCD_ALIENTEK_MIPI=y
++CONFIG_VIDEO_LCD_W280BF036I_DSI=y
+diff --git a/drivers/video/Kconfig b/drivers/video/Kconfig
+index 3800f9a9..ec0e58f7 100644
+--- a/drivers/video/Kconfig
++++ b/drivers/video/Kconfig
+@@ -554,6 +554,13 @@ config VIDEO_LCD_ALIENTEK_MIPI
+ 	Say Y here if you want to enable support for the ALIENTEK MIPI
+ 	DSI panel used on STM32MP2 boards.
+ 
++config VIDEO_LCD_W280BF036I_DSI
++	bool "W280BF036I 1-lane MIPI DSI LCD panel support"
++	select VIDEO_MIPI_DSI
++	help
++	Say Y here if you want to enable support for the W280BF036I
++	1-lane MIPI DSI panel used on STM32MP2 boards.
++
+ config VIDEO_LCD_ROCKTECH_HX8394
+ 	bool "ROCKTECH HX8394 DSI LCD panel support"
+ 	depends on VIDEO
 diff --git a/drivers/video/Makefile b/drivers/video/Makefile
-index 51e36bc7..0dc2db51 100644
+index 676f336f..d33d14ab 100644
 --- a/drivers/video/Makefile
 +++ b/drivers/video/Makefile
 @@ -78,6 +78,7 @@ obj-$(CONFIG_VIDEO_VESA) += vesa.o
  obj-$(CONFIG_VIDEO_SEPS525) += seps525.o
  obj-$(CONFIG_VIDEO_ZYNQMP_DPSUB) += zynqmp/
- obj-y += panel-alientek-mipi.o
-+obj-y += panel-w280bf036i-dsi.o
+ obj-$(CONFIG_VIDEO_LCD_ALIENTEK_MIPI) += panel-alientek-mipi.o
++obj-$(CONFIG_VIDEO_LCD_W280BF036I_DSI) += panel-w280bf036i-dsi.o
  
  obj-y += bridge/
  obj-y += sunxi/

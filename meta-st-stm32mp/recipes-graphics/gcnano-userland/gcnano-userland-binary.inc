@@ -6,7 +6,7 @@ LIC_FILES_CHKSUM = "file://${GCNANO_TAR_FILENAME}/LICENSE;md5=0e85fa534ee3a1a7f5
 DEPENDS += " libdrm wayland "
 
 SRC_URI = "git://github.com/STMicroelectronics/gcnano-binaries.git;protocol=https;branch=gcnano-${GCNANO_VERSION}-binaries"
-SRCREV = "7c181cacf89f918039e64934fdc33fe817a052cd"
+SRCREV = "36c58f64e9e9512a4aead194f47bee9b26615ee5"
 
 PV = "${GCNANO_VERSION}+${GCNANO_DATE}"
 

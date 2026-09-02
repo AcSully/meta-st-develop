@@ -1,27 +1,29 @@
 SUMMARY = "Linux STM32MP Kernel"
 SECTION = "kernel"
 LICENSE = "GPL-2.0-only"
-#LIC_FILES_CHKSUM = "file://COPYING;md5=bbea815ee2795b2f4230826c0c6b8814"
-LIC_FILES_CHKSUM = "file://COPYING;md5=6bc538ed5bd9a7fc9398086aedcd7e46"
+LIC_FILES_CHKSUM = " \
+    file://COPYING;md5=6bc538ed5bd9a7fc9398086aedcd7e46 \
+    file://LICENSES/preferred/GPL-2.0;md5=e6a75371ba4d16749254a51215d13f97 \
+    file://LICENSES/exceptions/Linux-syscall-note;md5=6b0dff741019b948dfe290c05d6f361c \
+    "
 
 include linux-stm32mp.inc
 
 LINUX_VERSION = "6.6"
-LINUX_SUBVERSION = ".78"
+LINUX_SUBVERSION = ".129"
 LINUX_TARBASE = "linux-${LINUX_VERSION}${LINUX_SUBVERSION}"
 LINUX_TARNAME = "${LINUX_TARBASE}.tar.xz"
 
 SRC_URI = "https://cdn.kernel.org/pub/linux/kernel/v6.x/${LINUX_TARNAME};name=kernel"
-#SRC_URI = "https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/snapshot/${LINUX_TARNAME};name=kernel"
 
-SRC_URI[kernel.sha256sum] = "5aa39a9bd555133ad741058f9908a277e6b36bb928481e747d885b50aaaa93ed"
+SRC_URI[kernel.sha256sum] = "caa08f0122224fbbfab177e2a37cc2a94a0046bd2e7e87f03f8913f2b812448a"
 
 SRC_URI += " \
-    file://${LINUX_VERSION}/${LINUX_VERSION}${LINUX_SUBVERSION}/0001-v6.6-stm32mp-r2.patch \
+    file://${LINUX_VERSION}/${LINUX_VERSION}${LINUX_SUBVERSION}/0001-v6.6-stm32mp-r3.1.patch \
     "
 
 LINUX_TARGET = "stm32mp"
-LINUX_RELEASE = "r2"
+LINUX_RELEASE = "r3.1"
 
 PV = "${LINUX_VERSION}${LINUX_SUBVERSION}-${LINUX_TARGET}-${LINUX_RELEASE}"
 
@@ -38,7 +40,7 @@ S = "${WORKDIR}/${LINUX_TARBASE}"
 BBCLASSEXTEND = "devupstream:target"
 
 SRC_URI:class-devupstream = "git://github.com/STMicroelectronics/linux.git;protocol=https;branch=${ARCHIVER_ST_BRANCH}"
-SRCREV:class-devupstream = "f01241fbba4d879fa770685629b49d42e904e43c"
+SRCREV:class-devupstream = "548f960c059bc4b9165cb69895fd67551f6061ca"
 #FIXME force the PV to avoid build issue:
 #  do_package: ExpansionError('SRCPV', '${@bb.fetch2.get_srcrev(d)}', FetchError('SRCREV was used yet no valid SCM was found in SRC_URI', None))
 PV:class-devupstream = "${LINUX_VERSION}${LINUX_SUBVERSION}-${LINUX_TARGET}.${SRCPV}"
@@ -100,6 +102,8 @@ SRC_URI:class-devupstream += "file://${LINUX_VERSION}/optional-fragment-07-efi.c
 SRC_URI:append:arm = " file://stm32mp1-snd.conf;subdir=modprobe.d/"
 SRC_URI:append:aarch32 = " file://stm32mp2_ucsi.conf;subdir=modprobe.d/"
 SRC_URI:append:aarch64 = " file://stm32mp2_ucsi.conf;subdir=modprobe.d/"
+SRC_URI:append:aarch32 = " file://stm32mp2_uio.conf;subdir=modprobe.d/"
+SRC_URI:append:aarch64 = " file://stm32mp2_uio.conf;subdir=modprobe.d/"
 
 # -------------------------------------------------------------
 # Kernel Args

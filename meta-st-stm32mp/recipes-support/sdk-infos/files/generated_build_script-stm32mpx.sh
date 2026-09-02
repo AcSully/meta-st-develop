@@ -8,6 +8,8 @@
 
 set -o nounset                              # Treat unset variables as an error
 
+command -v realpath > /dev/null 2>&1 || { echo "[ERROR] Missing 'realpath' on HOST!\nPlease install it before running the script again.\n" ; exit 1 ; }
+
 ########################################################
 # local variable for generation script
 MACHINE=
@@ -16,6 +18,7 @@ MX_NAME=""
 OUTPUT_SCRIPT=
 COMPONENTS=
 COMPONENTS_FIP=
+COMPONENTS_M33FW=
 #######################################################
 
 ########################################################
@@ -27,13 +30,19 @@ function config_stm32mp1_common() {
     echo "##################################################################"
     echo "##################################################################"
 
+    echo "# Path to SDK environment (where is 'environment-setup-cortexa7t2hf-neon-vfpv4-ostl-linux-gnueabi')"
+    echo "# Usually: /opt/st/stm32mp1/<X.X.X>-openstlinux-<X.X>-yocto-<version_name>-mpu-v<XX.XX.XX>/"
+    echo "sdk_absolute_path=\"<SDK absolute path>\""
+    echo "# Name of environment setup script for sdk"
+    echo "sdk_env_file=\"environment-setup-cortexa7t2hf-neon-vfpv4-ostl-linux-gnueabi\""
+    echo ""
     echo "# Configuration for building stm32mp1x"
     echo "your_board_name=\"<Your board name>\""
     echo ""
     echo "# your_soc_name can be stm32mp15 or stm32mp13"
     echo "your_soc_name=\"<Your soc name>\""
     echo ""
-    echo "# Type of security can be 'optee' or 'opteemin' (opteemin is preconize for stm32mp15)"
+    echo "# Type of security can be 'optee' or 'opteemin' ('opteemin' is recommemded for stm32mp15)"
     echo "your_storage_boot_scheme_security=\"<your_storage_boot_scheme_security>\""
     echo ""
     echo "# Type of boot scheme storage used for A35 part, ex.:"
@@ -47,14 +56,15 @@ function config_stm32mp1_common() {
     echo "your_storage_boot_scheme_cortex_a=\"<your_storage_boot_scheme_cortex_a>\""
     echo ""
     echo "# Location to store all the binaries generated"
+    echo "# An absolute path is required"
     echo "your_deploy_dir_path=\"<your_deploy_dir_path>\""
     echo ""
-    echo "# Define sub build directory (by default set to ../build)"
+    echo "# Define build subdirectory (by default set to ../build)"
     echo "your_build_subdir_path=\"<your_build_subdir_path>\""
     echo ""
 
     echo "PARALLEL_MAKE="
-    echo "# paralelle make for linux kernel:"
+    echo "# parallel make for linux kernel:"
     echo "# ex.: "
     echo "# PARALLEL_MAKE=-j8"
     echo ""
@@ -75,8 +85,9 @@ function config_stm32mp1_externaldt() {
 
     echo "# ------------------------------"
     echo "# Via external dt"
-    echo "# force external dt path to externaldt env path"
+    echo "# force external dt path to external-dt env path"
     echo "externaldt_path=\"<external dt path>\""
+    echo ""
     echo "# external dt subpath for Optee"
     echo "externaldt_optee_path=stm32mp1/optee"
     echo "externaldt_optee_programmer_path=stm32mp1/optee"
@@ -91,18 +102,17 @@ function config_stm32mp1_externaldt() {
     echo ""
     echo "# Name of devicetree to use"
     echo "# Optee dt name"
-    echo "optee_dt_name=\$your_board_name"
-    echo "optee_dt_programmer_name=\$your_board_name"
+    echo "optee_dt_name=\${your_board_name}"
+    echo "optee_dt_programmer_name=\${your_board_name}"
     echo "# U-boot dt name"
     echo "uboot_defconfig=\${your_soc_name}_defconfig"
-    echo "uboot_dt_name=\$your_board_name"
-    echo "uboot_programmer_dt_name=your_board_name"
+    echo "uboot_dt_name=\${your_board_name}"
+    echo "uboot_programmer_dt_name=\${your_board_name}"
     echo "# TF-A dt name"
-    echo "tfa_dt_name=\$your_board_name"
-    echo "tfa_dt_programmer_name=\$your_board_name"
+    echo "tfa_dt_name=\${your_board_name}"
+    echo "tfa_dt_programmer_name=\${your_board_name}"
     echo "# Linux kernel dt name"
-    echo "# linux"
-    echo "linux_dtb_name=\$your_board_name"
+    echo "linux_dtb_name=\${your_board_name}"
 }
 function config_stm32mp1_mx() {
     echo "# define the cube mx project name"
@@ -129,6 +139,7 @@ function config_stm32mp1_mx() {
     echo "# force external dt path to CubeMX project path"
     echo "# ex.: externaldt_path=my_project_path"
     echo "externaldt_path=<Path to CubeMX project path>"
+    echo ""
     echo "# external dt subpath for Optee"
     echo "externaldt_optee_path=CA7/DeviceTree/\${your_cubemx_project_name}/optee-os"
     echo "externaldt_optee_programmer_path=CA7/DeviceTree/\${your_cubemx_project_name}/optee-os"
@@ -143,18 +154,17 @@ function config_stm32mp1_mx() {
     echo ""
     echo "# Name of devicetree to use"
     echo "# Optee dt name"
-    echo "optee_dt_name=\$your_board_name"
-    echo "optee_dt_programmer_name=\$your_board_name"
+    echo "optee_dt_name=\${your_board_name}"
+    echo "optee_dt_programmer_name=\${your_board_name}"
     echo "# U-boot dt name"
     echo "uboot_defconfig=\${your_soc_name}_defconfig"
-    echo "uboot_dt_name=\$your_board_name"
-    echo "uboot_programmer_dt_name=your_board_name"
+    echo "uboot_dt_name=\${your_board_name}"
+    echo "uboot_programmer_dt_name=\${your_board_name}"
     echo "# TF-A dt name"
-    echo "tfa_dt_name=\$your_board_name"
-    echo "tfa_dt_programmer_name=\$your_board_name"
+    echo "tfa_dt_name=\${your_board_name}"
+    echo "tfa_dt_programmer_name=\${your_board_name}"
     echo "# Linux kernel dt name"
-    echo "# linux"
-    echo "linux_dtb_name=\$your_board_name"
+    echo "linux_dtb_name=\${your_board_name}"
 }
 function config_stm32mp1() {
     local mx=$1
@@ -164,14 +174,18 @@ function config_stm32mp1() {
     else
         config_stm32mp1_externaldt
     fi
+    echo ""
     echo "##################################################################"
     echo "##################################################################"
-    echo "##################################################################"
+    echo "### End of general configuration"
     echo "##################################################################"
 }
 function dump_stm32mp1_config() {
     local mx=$1
+    echo "echo \"\""
     echo "echo \"Your configuration:\""
+    echo "echo \"     sdk_absolute_path                 = \${sdk_absolute_path}\""
+    echo "echo \"     sdk_env_file                      = \${sdk_env_file}\""
     echo "echo \"     your_board_name                   = \${your_board_name}\""
     echo "echo \"     your_soc_name                     = \${your_soc_name}\""
     echo "echo \"     your_storage_boot_scheme_security = \${your_storage_boot_scheme_security}\""
@@ -193,6 +207,12 @@ function config_stm32mp2_common() {
     echo "##################################################################"
     echo "##################################################################"
 
+    echo "# Path to SDK environment (where is 'environment-setup-cortexa35-ostl-linux')"
+    echo "# Usually: /opt/st/stm32mp2/<X.X.X>-openstlinux-<X.X>-yocto-<version_name>-mpu-v<XX.XX.XX>/"
+    echo "sdk_absolute_path=\"<SDK absolute path>\""
+    echo "# Name of environment setup script for sdk"
+    echo "sdk_env_file=\"environment-setup-cortexa35-ostl-linux\""
+    echo ""
 
     echo "# Configuration for building stm32mp2x"
     echo "your_board_name=\"<Your board name>\""
@@ -200,7 +220,7 @@ function config_stm32mp2_common() {
     echo "# your_soc_name can be stm32mp21, stm32mp23, stm32mp25"
     echo "your_soc_name=\"<Your soc name>\""
     echo ""
-    echo "# Type of securityType of security can be 'optee' or 'opteemin' (optee is preconized)"
+    echo "# Type of security can be 'optee' or 'opteemin' ('optee' is recommended)"
     echo "your_storage_boot_scheme_security=\"<your_storage_boot_scheme_security>\""
     echo ""
     echo "# Type of boot scheme storage used for A35 part, ex.:"
@@ -211,13 +231,14 @@ function config_stm32mp2_common() {
     echo "your_storage_boot_scheme_cortex_a=\"<your_storage_boot_scheme_cortex_a>\""
     echo ""
     echo "# Location to store all the binaries generated"
+    echo "# An absolute path is required"
     echo "your_deploy_dir_path=\"<your_deploy_dir_path>\""
     echo ""
-    echo "# Define sub build directory  (by default set to ../build)"
+    echo "# Define build subdirectory (by default set to ../build)"
     echo "your_build_subdir_path=\"<your_build_subdir_path>\""
     echo ""
     echo "PARALLEL_MAKE="
-    echo "# paralelle make for linux kernel:"
+    echo "# parallel make for linux kernel:"
     echo "# ex.: "
     echo "# PARALLEL_MAKE=-j8"
     echo ""
@@ -240,8 +261,9 @@ function config_stm32mp2_externaldt() {
 
     echo "# ------------------------------"
     echo "# Via external dt"
-    echo "# force external dt path to externaldt env path"
+    echo "# force external dt path to external-dt env path"
     echo "externaldt_path=\"<external dt path>\""
+    echo ""
     echo "# external dt subpath for Optee"
     echo "externaldt_optee_path=stm32mp2/a35-td/optee"
     echo "externaldt_optee_programmer_path=stm32mp2/a35-td/optee"
@@ -256,18 +278,17 @@ function config_stm32mp2_externaldt() {
     echo ""
     echo "# Name of devicetree to use"
     echo "# Optee dt name"
-    echo "optee_dt_name=\$your_board_name"
-    echo "optee_dt_programmer_name=\$your_board_name"
+    echo "optee_dt_name=\${your_board_name}"
+    echo "optee_dt_programmer_name=\${your_board_name}"
     echo "# U-boot dt name"
     echo "uboot_defconfig=\${your_soc_name}_defconfig"
-    echo "uboot_dt_name=\$your_board_name"
-    echo "uboot_programmer_dt_name=your_board_name"
+    echo "uboot_dt_name=\${your_board_name}"
+    echo "uboot_programmer_dt_name=\${your_board_name}"
     echo "# TF-A dt name"
-    echo "tfa_dt_name=\$your_board_name"
-    echo "tfa_dt_programmer_name=\$your_board_name"
+    echo "tfa_dt_name=\${your_board_name}"
+    echo "tfa_dt_programmer_name=\${your_board_name}"
     echo "# Linux kernel dt name"
-    echo "# linux"
-    echo "linux_dtb_name=\$your_board_name"
+    echo "linux_dtb_name=\${your_board_name}"
 }
 function config_stm32mp2_mx() {
     echo "# define the cube mx project name"
@@ -307,18 +328,17 @@ function config_stm32mp2_mx() {
     echo ""
     echo "# Name of devicetree to use"
     echo "# Optee dt name"
-    echo "optee_dt_name=\$your_board_name"
-    echo "optee_dt_programmer_name=\$your_board_name"
+    echo "optee_dt_name=\${your_board_name}"
+    echo "optee_dt_programmer_name=\${your_board_name}"
     echo "# U-boot dt name"
     echo "uboot_defconfig=\${your_soc_name}_defconfig"
-    echo "uboot_dt_name=\$your_board_name"
-    echo "uboot_programmer_dt_name=your_board_name"
+    echo "uboot_dt_name=\${your_board_name}"
+    echo "uboot_programmer_dt_name=\${your_board_name}"
     echo "# TF-A dt name"
-    echo "tfa_dt_name=\$your_board_name"
-    echo "tfa_dt_programmer_name=\$your_board_name"
+    echo "tfa_dt_name=\${your_board_name}"
+    echo "tfa_dt_programmer_name=\${your_board_name}"
     echo "# Linux kernel dt name"
-    echo "# linux"
-    echo "linux_dtb_name=\$your_board_name"
+    echo "linux_dtb_name=\${your_board_name}"
 }
 function config_stm32mp2() {
     local mx=$1
@@ -328,14 +348,18 @@ function config_stm32mp2() {
     else
         config_stm32mp2_externaldt
     fi
+    echo ""
     echo "##################################################################"
     echo "##################################################################"
-    echo "##################################################################"
+    echo "### End of general configuration"
     echo "##################################################################"
 }
 function dump_stm32mp2_config() {
     local mx=$1
+    echo "echo \"\""
     echo "echo \"Your configuration:\""
+    echo "echo \"     sdk_absolute_path                 = \${sdk_absolute_path}\""
+    echo "echo \"     sdk_env_file                      = \${sdk_env_file}\""
     echo "echo \"     your_board_name                   = \${your_board_name}\""
     echo "echo \"     your_soc_name                     = \${your_soc_name}\""
     echo "echo \"     your_storage_boot_scheme_security = \${your_storage_boot_scheme_security}\""
@@ -365,13 +389,19 @@ function config_stm32mp2-m33td_common() {
     echo "##################################################################"
     echo "##################################################################"
 
+    echo "# Path to SDK environment (where is 'environment-setup-cortexa35-ostl-linux')"
+    echo "# Usually: /opt/st/stm32mp2/<X.X.X>-openstlinux-<X.X>-yocto-<version_name>-mpu-v<XX.XX.XX>/"
+    echo "sdk_absolute_path=\"<SDK absolute path>\""
+    echo "# Name of environment setup script for sdk"
+    echo "sdk_env_file=\"environment-setup-cortexa35-ostl-linux\""
+    echo ""
     echo "# Configuration for building stm32mp2x-M33TD"
     echo "your_board_name=\"<Your board name>\""
     echo ""
     echo "# your_soc_name can be stm32mp21, stm32mp25"
     echo "your_soc_name=\"<Your soc name>\""
     echo ""
-    echo "# Type of securityType of security can be 'optee' or 'opteemin' (optee is preconized)"
+    echo "# Type of security can be 'optee' or 'opteemin' ('optee' is recommended)"
     echo "your_storage_boot_scheme_security=\"<your_storage_boot_scheme_security>\""
     echo ""
     echo "# Type of boot scheme storage used for A35 part, ex.:"
@@ -396,18 +426,29 @@ function config_stm32mp2-m33td_common() {
     echo "your_m33_profile=\"<your_m33_profile>\""
     echo ""
     echo "# Name of project used on M33 processor, ex.:"
+    echo "#       StarterApp_M33TD"
+    echo "your_cube_m33td_project_name=\"<your_cube_m33td_project_name>\""
+    echo ""
+    echo "# Path for project used on M33 processor, ex.:"
     echo "#       Projects/STM32MP215F-DK/Demonstrations/StarterApp_M33TD"
+    echo "#       Projects/STM32MP235F-DK/Demonstrations/StarterApp_M33TD"
+    echo "#       Projects/STM32MP257F-DK/Demonstrations/StarterApp_M33TD"
     echo "#       Projects/STM32MP257F-EV1/Demonstrations/StarterApp_M33TD"
-    echo "your_cube_m33td_project=\"<your_cube_m33td_project>\""
+    echo "your_cube_m33td_project_path=\"<your_cube_m33td_project_path>\""
+    echo ""
+    echo "# Specific cmake flags to apply for Cube M33TD project build, ex.:"
+    echo "#       -DBUILD_CONFIG=FULL -DBOOT_SPLASHSCREEN=STATIC"
+    echo "your_cube_m33td_bld_opts=\"<your_cube_m33td_bld_opts>\""
     echo ""
     echo "# Location to store all the binaries generated"
-    echo "your_deploy_dir_path=\"<your_deploy_dir_path>\""
+    echo "# An absolute path is required"
+    echo "your_deploy_dir_path=\"<your_deploy_dir_absolute_path>\""
     echo ""
-    echo "# Define sub build directory (by default set to ../build)"
+    echo "# Define build subdirectory (by default set to ../build)"
     echo "your_build_subdir_path=\"<your_build_subdir_path>\""
     echo ""
     echo "PARALLEL_MAKE="
-    echo "# paralelle make for linux kernel:"
+    echo "# parallel make for linux kernel:"
     echo "# ex.: "
     echo "# PARALLEL_MAKE=-j8"
     echo ""
@@ -433,6 +474,7 @@ function config_stm32mp2-m33td_externaldt() {
     echo "# force external dt path to externaldt env path"
     echo "# (EXTDT_DIR can be changed by overwriting the path on external-dt_set funcion)"
     echo "externaldt_path=<external dt path>"
+    echo ""
     echo "# external dt subpath for Optee"
     echo "externaldt_optee_path=stm32mp2/m33-td/optee"
     echo "externaldt_optee_programmer_path=stm32mp2/m33-td/optee"
@@ -457,10 +499,15 @@ function config_stm32mp2-m33td_externaldt() {
     echo "uboot_dt_name=\${your_board_name}-cm33tdcid-ostl\${DEVICETREE_SUFFIX_ARRAY[\${your_storage_boot_scheme_cortex_a}]}"
     echo "uboot_programmer_dt_name=\${your_board_name}-cm33tdcid-ostl-serial-ca35tdcid"
     echo "# TF-A dt name"
-    echo "tfa_dt_name=\${your_board_name}-cm33tdcid-ostl"
+    echo "tfa_dt_name=\${your_board_name}-cm33tdcid-ostl\${DEVICETREE_SUFFIX_ARRAY[\${your_storage_boot_scheme_cortex_a}]}"
     echo "tfa_dt_programmer_name=\${your_board_name}-cm33tdcid-ostl-serial-ca35tdcid"
+    echo "# Linux kernel dt name"
+    echo "linux_dtb_name=\${your_board_name}-cm33tdcid-ostl\${DEVICETREE_SUFFIX_ARRAY[\${your_storage_boot_scheme_cortex_a}]}"
     echo "# TF-M dt name"
     echo "tfm_dt_name=\${your_board_name}-cm33tdcid-ostl"
+    echo ""
+    echo "# Use externaldt suffix (defined via DEVICETREE_SUFFIX_ARRAY)"
+    echo "use_externaldt_suffix=1"
 }
 function config_stm32mp2-m33td_mx() {
     echo "# define the cube mx project name"
@@ -504,7 +551,7 @@ function config_stm32mp2-m33td_mx() {
     echo "externaldt_tfa_path=CA35/DeviceTree/\${your_cubemx_project_name}/tf-a"
     echo "externaldt_tfa_programmer_path=ExtMemLoader/DeviceTree/tf-a"
     echo "# TF-M"
-    echo "externaldt_tfm_path=CM33/DeviceTree/\${your_cubemx_project_name}/tfm"
+    echo "externaldt_tfm_path=CM33/DeviceTree/\${your_cubemx_project_name}/tf-m"
     echo "externaldt_mcuboot_path=CM33/DeviceTree/\${your_cubemx_project_name}/mcuboot"
     echo "# Kernel linux"
     echo "externaldt_linux_path=CA35/DeviceTree/\${your_cubemx_project_name}/kernel"
@@ -520,8 +567,15 @@ function config_stm32mp2-m33td_mx() {
     echo "# TF-A dt name"
     echo "tfa_dt_name=\${your_board_name}"
     echo "tfa_dt_programmer_name=\${your_board_name}"
+    echo "# Linux kernel dt name"
+    echo "linux_dtb_name=\${your_board_name}"
     echo "# TF-M dt name"
     echo "tfm_dt_name=\${your_board_name}"
+    echo ""
+    echo "# Do not use externaldt suffix (Mx doesn't generate devicetree with sotorage suffix)"
+    echo "use_externaldt_suffix=0"
+    echo ""
+
 }
 function config_stm32mp2-m33td() {
     local mx=$1
@@ -531,14 +585,18 @@ function config_stm32mp2-m33td() {
     else
         config_stm32mp2-m33td_externaldt
     fi
+    echo ""
     echo "##################################################################"
     echo "##################################################################"
-    echo "##################################################################"
+    echo "### End of general configuration"
     echo "##################################################################"
 }
 function dump_stm32mp2-m33td_config() {
     local mx=$1
+    echo "echo \"\""
     echo "echo \"Your configuration:\""
+    echo "echo \"     sdk_absolute_path                 = \${sdk_absolute_path}\""
+    echo "echo \"     sdk_env_file                      = \${sdk_env_file}\""
     echo "echo \"     your_board_name                   = \${your_board_name}\""
     echo "echo \"     your_soc_name                     = \${your_soc_name}\""
     echo "echo \"     your_storage_boot_scheme_security = \${your_storage_boot_scheme_security}\""
@@ -553,7 +611,7 @@ function dump_stm32mp2-m33td_config() {
     echo "echo \"     your_cubemx_project_name          = \${your_cubemx_project_name}\""
     fi
     echo "echo \"     externaldt_path                   = \${externaldt_path}\""
-
+    echo "echo \"     use_externaldt_suffix             = \${use_externaldt_suffix}\""
     echo "echo \"\""
 }
 
@@ -580,23 +638,31 @@ function dump_stm32mp_config() {
     local mx=$2
     case $machine in
     stm32mp1)
+        echo ""
         dump_stm32mp1_config $mx
-        echo "[ \$DRY_RUN -eq 1 ] &&  echo \"     ***DRY RUN***\""
-        echo "[ \$DRY_RUN -eq 1 ] &&  echo \"\""
+        echo "[ \$local_DRY_RUN -eq 1 ] &&  echo \"     ***DRY RUN***\""
+        echo "[ \$local_DRY_RUN -eq 1 ] &&  echo \"\""
         ;;
     stm32mp2)
+        echo ""
         dump_stm32mp2_config $mx
-        echo "[ \$DRY_RUN -eq 1 ] &&  echo \"     ***DRY RUN***\""
-        echo "[ \$DRY_RUN -eq 1 ] &&  echo \"\""
+        echo "[ \$local_DRY_RUN -eq 1 ] &&  echo \"     ***DRY RUN***\""
+        echo "[ \$local_DRY_RUN -eq 1 ] &&  echo \"\""
         ;;
     stm32mp2-m33td)
+        echo ""
         dump_stm32mp2-m33td_config $mx
-        echo "[ \$DRY_RUN -eq 1 ] &&  echo \"     ***DRY RUN***\""
-        echo "[ \$DRY_RUN -eq 1 ] &&  echo \"\""
+        echo "[ \$local_DRY_RUN -eq 1 ] &&  echo \"     ***DRY RUN***\""
+        echo "[ \$local_DRY_RUN -eq 1 ] &&  echo \"\""
         ;;
     *)
         ;;
     esac
+    echo ""
+    echo "# Test if sdk if correctly set"
+    echo "[ \$local_DRY_RUN -eq 0 ] && [ -d \${sdk_absolute_path} ] || die 'testing sdk path: sdk patch not correct'"
+    echo "[ \$local_DRY_RUN -eq 0 ] && [ -e \${sdk_absolute_path}/\${sdk_env_file} ] || die  'testing sdk environment script: env script not set correclty'"
+
 }
 ########################################################
 SCRIPT_PATH=$(dirname ${BASH_SOURCE})
@@ -639,9 +705,13 @@ function process_data() {
     if $(echo $localdata | grep -q your_m33_profile) ; then
         localdata=$(echo $localdata |sed "s|<your_m33_profile>|\${your_m33_profile}|g")
     fi
-    # your_m33_profile
+    # your_deploy_dir_path
     if $(echo $localdata | grep -q your_deploy_dir_path) ; then
         localdata=$(echo $localdata |sed "s|<your_deploy_dir_path>|\${your_deploy_dir_path}|g")
+    fi
+    # use_externaldt_suffix
+    if $(echo $localdata | grep -q use_externaldt_suffix) ; then
+        localdata=$(echo $localdata |sed "s|<use_externaldt_suffix>|\${use_externaldt_suffix}|g")
     fi
     # your build sub path
     if $(echo $localdata | grep -q your_build_subdir_path) ; then
@@ -710,8 +780,14 @@ function process_data() {
         localdata=$(echo $localdata |sed "s|<externaldt_linux_path>|\${externaldt_linux_path}|g")
     fi
     # m33tdproject
-    if $(echo $localdata | grep -q your_cube_m33td_project) ; then
-        localdata=$(echo $localdata |sed "s|<your_cube_m33td_project>|\${your_cube_m33td_project}|g")
+    if $(echo $localdata | grep -q your_cube_m33td_project_name) ; then
+        localdata=$(echo $localdata |sed "s|<your_cube_m33td_project_name>|\${your_cube_m33td_project_name}|g")
+    fi
+    if $(echo $localdata | grep -q your_cube_m33td_project_path) ; then
+        localdata=$(echo $localdata |sed "s|<your_cube_m33td_project_path>|\${your_cube_m33td_project_path}|g")
+    fi
+    if $(echo $localdata | grep -q your_cube_m33td_bld_opts) ; then
+        localdata=$(echo $localdata |sed "s|<your_cube_m33td_bld_opts>|\${your_cube_m33td_bld_opts}|g")
     fi
 
     echo $localdata
@@ -756,6 +832,15 @@ function generate_action_compile_for_deploy() {
         echo "    ${c}_compile"
     done
 }
+function generate_action_compile_m33fw_for_deploy() {
+    debug "** generate_action_compile_m33fw_for_deploy"
+    echo "    action_set"
+    for c in ${COMPONENTS_M33FW};
+    do
+        echo "    ${c}_configure"
+        echo "    ${c}_compile"
+    done
+}
 function generate_action_deploy_for_fip() {
     debug "** generate_action_deploy_for_fip"
     echo "    action_set"
@@ -764,7 +849,14 @@ function generate_action_deploy_for_fip() {
         echo "    ${c}_deploy"
     done
 }
-
+function generate_action_deploy_for_m33fw() {
+    debug "** generate_action_deploy_for_m33fw"
+    echo "    action_set"
+    for c in ${COMPONENTS_M33FW};
+    do
+        echo "    ${c}_deploy"
+    done
+}
 function generate_action_deploy() {
     debug "** generate_action_deploy"
     echo "    action_set"
@@ -773,7 +865,6 @@ function generate_action_deploy() {
         echo "    ${c}_deploy"
     done
 }
-
 function generate_action_programmer() {
     debug "** generate_action_programmer"
     echo "    action_set"
@@ -867,16 +958,24 @@ function generate_action_component() {
             echo "    action_set"
             echo "    ${c}_dtbs"
             echo "    ;;"
+            echo "${c}-images)"
+            echo "    action_set"
+            echo "    ${c}_images"
+            echo "    ;;"
             echo "${c}-modules)"
             echo "    action_set"
             echo "    ${c}_modules"
+            echo "    ;;"
+            echo "${c}-menuconfig)"
+            echo "    action_set"
+            echo "    ${c}_menuconfig"
             echo "    ;;"
 
         fi
     done
 }
 function generate_component_list() {
-    debug "** generate_action_compenent_list"
+    debug "** generate_action_component_list"
     for c in ${COMPONENTS};
     do
         echo "    echo \"    ${c}\""
@@ -887,8 +986,10 @@ function generate_component_list() {
 # @E> : extract
 # @S> : set
 # @C> : compile
-# @c> : compile
+# @c> : configure
 # @F> : generate fip
+# @M> : generate m33fw
+# @MC>: module compile
 # @PC>: compile programmer
 # @PF>: generate programmer fip
 function generate_component_function() {
@@ -912,6 +1013,7 @@ function generate_component_function() {
         set_nb=$(grep "\$@S>" ${readme} | wc -l)
         compile_nb=$(grep "\$@C>" ${readme} | wc -l)
         fip_nb=$(grep "\$@F>" ${readme} | wc -l)
+        m33fw_nb=$(grep "\$@M>" ${readme} | wc -l)
         programmer_compile_nb=$(grep "\$@PC>" ${readme} | wc -l)
         programmer_fip_nb=$(grep "\$@PF>" ${readme} | wc -l)
         configure_nb=$(grep "\$@c>" ${readme} | wc -l)
@@ -919,6 +1021,7 @@ function generate_component_function() {
         debug "  set_nb=$set_nb"
         debug "  compile_nb=$compile_nb"
         debug "  fip_nb=$fip_nb"
+        debug "  m33fw_nb=$m33fw_nb"
         debug "  programmer_compile_nb=$programmer_compile_nb"
         debug "  programmer_fip_nb=$programmer_fip_nb"
         debug "  configure_nb=$configure_nb"
@@ -945,7 +1048,7 @@ function generate_component_function() {
             echo "        cd \$localpath"
             echo "        touch source_code_extracted-${c}"
             echo "    else"
-            echo "        echo \"source code for ${c} not extracted\""
+            echo "        echo \"source code for ${c} already extracted\""
             echo "    fi"
             echo "    cd \$localpath"
         fi
@@ -966,19 +1069,19 @@ function generate_component_function() {
                 if $(echo ${d} | grep -q '@P>') ; then
                     local_tmp_data=$(process_data ${d})
                     echo "    cmd \"${local_tmp_data}\"" | sed "s|[[:space:]]*\$@P>||"
-                    echo "[ \$DRY_RUN -eq 0 ] && ${local_tmp_data}" | sed "s|[[:space:]]*\$@P>|   |"
+                    echo "[ \$local_DRY_RUN -eq 0 ] && ${local_tmp_data}" | sed "s|[[:space:]]*\$@P>|   |"
                 fi
             done
             for d in ${data};
             do
                 if $(echo ${c} | grep -q "external-dt") ; then
-                    # set is not use and overwrited by externaldt_path
+                    # set is not use and overwritten by externaldt_path
                     continue
                 fi
                 if $(echo ${d} | grep -q '@S') ; then
                     local_tmp_data=$(process_data ${d})
                     echo "    cmd \"${local_tmp_data}\"" | sed "s|[[:space:]]*\$@S>||"
-                    echo "[ \$DRY_RUN -eq 0 ] && ${local_tmp_data}" | sed "s|[[:space:]]*\$@S>|   |"
+                    echo "[ \$local_DRY_RUN -eq 0 ] && ${local_tmp_data}" | sed "s|[[:space:]]*\$@S>|   |"
                 fi
             done
             IFS=$old_IFS
@@ -998,23 +1101,24 @@ function generate_component_function() {
                 if $(echo ${d} | grep -q '@P>') ; then
                     local_tmp_data=$(process_data ${d})
                     echo "    cmd \"${local_tmp_data}\"" | sed "s|[[:space:]]*\$@P>||"
-                    echo "[ \$DRY_RUN -eq 0 ] && ${local_tmp_data}" | sed "s|[[:space:]]*\$@P>|   |"
+                    echo "[ \$local_DRY_RUN -eq 0 ] && ${local_tmp_data}" | sed "s|[[:space:]]*\$@P>|   |"
                 fi
             done
-            echo "    cmd    export BLD_PATH=\${your_build_subdir_path}"
-            echo "    [ \$DRY_RUN -eq 0 ] && export BLD_PATH=\${your_build_subdir_path}"
+            echo "    cmd    export BLD_PATH=\$(realpath \${your_build_subdir_path})"
+            echo "    [ \$local_DRY_RUN -eq 0 ] && export BLD_PATH=\$(realpath \${your_build_subdir_path})"
             if $(echo ${c} | grep -q "linux-stm32mp") ; then
-                echo "    if [ ! -e ../source_code_configured-${c}-for-\${your_board_name} ]; then"
+                echo "        build_dir=\$(basename \${your_build_subdir_path})"
+                echo "    if [ ! -e ../source_code_configured-${c}-for-\${your_board_name}-\${build_dir} ]; then"
             fi
             for d in ${data};
             do
                 if $(echo ${d} | grep -q '@c') ; then
                     local_tmp_data=$(process_data ${d})
-                    echo "[ \$DRY_RUN -eq 0 ] && ${local_tmp_data} || die ${c}" | sed "s|[[:space:]]*\$@c>|       |"
+                    echo "[ \$local_DRY_RUN -eq 0 ] && ${local_tmp_data} || die ${c}" | sed "s|[[:space:]]*\$@c>|       |"
                 fi
             done
             if $(echo ${c} | grep -q "linux-stm32mp") ; then
-                echo "        [ \$DRY_RUN -eq 0 ] && touch ../source_code_configured-${c}-for-\${your_board_name}"
+                echo "        [ \$local_DRY_RUN -eq 0 ] && touch ../source_code_configured-${c}-for-\${your_board_name}-\${build_dir}"
                 echo "    fi"
             fi
 
@@ -1035,17 +1139,17 @@ function generate_component_function() {
                 if $(echo ${d} | grep -q '@P>') ; then
                     local_tmp_data=$(process_data ${d})
                     echo "    cmd \"${local_tmp_data}\"" | sed "s|[[:space:]]*\$@P>||"
-                    echo "[ \$DRY_RUN -eq 0 ] && ${local_tmp_data}" | sed "s|[[:space:]]*\$@P>|   |"
+                    echo "[ \$local_DRY_RUN -eq 0 ] && ${local_tmp_data}" | sed "s|[[:space:]]*\$@P>|   |"
                 fi
             done
-            echo "    cmd    export BLD_PATH=\${your_build_subdir_path}"
-            echo "    [ \$DRY_RUN -eq 0 ] && export BLD_PATH=\${your_build_subdir_path}"
+            echo "    cmd    export BLD_PATH=\$(realpath \${your_build_subdir_path})"
+            echo "    [ \$local_DRY_RUN -eq 0 ] && export BLD_PATH=\$(realpath \${your_build_subdir_path})"
             for d in ${data};
             do
                 if $(echo ${d} | grep -q '@C') ; then
                     local_tmp_data=$(process_data ${d})
-                    echo "    cmd \"${local_tmp_data}\"" | sed "s|[[:space:]]*\$@C>||"
-                    echo "[ \$DRY_RUN -eq 0 ] && ${local_tmp_data} || die ${c}" | sed "s|[[:space:]]*\$@C>|   |"
+                    echo "    cmd \"${local_tmp_data}\"" | sed "s|[[:space:]]*\$@C.*>||"
+                    echo "[ \$local_DRY_RUN -eq 0 ] && ${local_tmp_data} || die ${c}" | sed "s|[[:space:]]*\$@C.*>|   |"
                 fi
             done
             IFS=$old_IFS
@@ -1056,7 +1160,7 @@ function generate_component_function() {
 
         echo "function ${c}_deploy {"
         echo "    echo \"**** ${c}_deploy ****START****\""
-        if [ $fip_nb -gt 0 ]; then
+        if [ $fip_nb -gt 0 ] || [ $m33fw_nb -gt 0 ]; then
             echo "    localpath=\$PWD"
             old_IFS=$IFS
             IFS=$'\n'
@@ -1065,17 +1169,27 @@ function generate_component_function() {
                 if $(echo ${d} | grep -q '@P>') ; then
                     local_tmp_data=$(process_data ${d})
                     echo "    cmd \"${local_tmp_data}\"" | sed "s|[[:space:]]*\$@P>||"
-                    echo "[ \$DRY_RUN -eq 0 ] && ${local_tmp_data}" | sed "s|[[:space:]]*\$@P>|   |"
+                    echo "[ \$local_DRY_RUN -eq 0 ] && ${local_tmp_data}" | sed "s|[[:space:]]*\$@P>|   |"
                 fi
             done
-            echo "    cmd    export BLD_PATH=\${your_build_subdir_path}"
-            echo "    [ \$DRY_RUN -eq 0 ] && export BLD_PATH=\${your_build_subdir_path}"
+            echo "    cmd    export BLD_PATH=\$(realpath \${your_build_subdir_path})"
+            echo "    [ \$local_DRY_RUN -eq 0 ] && export BLD_PATH=\$(realpath \${your_build_subdir_path})"
             for d in ${data};
             do
                 if $(echo ${d} | grep -q '@F') ; then
                     local_tmp_data=$(process_data ${d})
                     echo "    cmd \"${local_tmp_data}\"" | sed "s|[[:space:]]*\$@F>||"
-                    echo "[ \$DRY_RUN -eq 0 ] && ${local_tmp_data} || die ${c}" | sed "s|[[:space:]]*\$@F>|   |"
+                    echo "[ \$local_DRY_RUN -eq 0 ] && ${local_tmp_data} || die ${c}" | sed "s|[[:space:]]*\$@F>|   |"
+                fi
+            done
+            echo "    cmd    export BLD_PATH=\$(realpath \${your_build_subdir_path})"
+            echo "    [ \$local_DRY_RUN -eq 0 ] && export BLD_PATH=\$(realpath \${your_build_subdir_path})"
+            for d in ${data};
+            do
+                if $(echo ${d} | grep -q '@M>') ; then
+                    local_tmp_data=$(process_data ${d})
+                    echo "    cmd \"${local_tmp_data}\"" | sed "s|[[:space:]]*\$@M>||"
+                    echo "[ \$local_DRY_RUN -eq 0 ] && ${local_tmp_data} || die ${c}" | sed "s|[[:space:]]*\$@M>|   |"
                 fi
             done
             IFS=$old_IFS
@@ -1095,17 +1209,17 @@ function generate_component_function() {
                 if $(echo ${d} | grep -q '@P>') ; then
                     local_tmp_data=$(process_data ${d})
                     echo "    cmd \"${local_tmp_data}\"" | sed "s|[[:space:]]*\$@P>||"
-                    echo "[ \$DRY_RUN -eq 0 ] && ${local_tmp_data}" | sed "s|[[:space:]]*\$@P>|   |"
+                    echo "[ \$local_DRY_RUN -eq 0 ] && ${local_tmp_data}" | sed "s|[[:space:]]*\$@P>|   |"
                 fi
             done
-            echo "    cmd    export BLD_PATH=\${your_build_subdir_path}-programmer"
-            echo "    [ \$DRY_RUN -eq 0 ] && export BLD_PATH=\${your_build_subdir_path}-programmer"
+            echo "    cmd    export BLD_PATH=\$(realpath \${your_build_subdir_path}-programmer)"
+            echo "    [ \$local_DRY_RUN -eq 0 ] && export BLD_PATH=\$(realpath \${your_build_subdir_path}-programmer)"
             for d in ${data};
             do
                 if $(echo ${d} | grep -q '@PC') ; then
                     local_tmp_data=$(process_data ${d})
                     echo "    cmd \"${local_tmp_data}\"" | sed "s|[[:space:]]*\$@PC>||"
-                    echo "[ \$DRY_RUN -eq 0 ] && ${local_tmp_data} || die ${c}" | sed "s|[[:space:]]*\$@PC>|   |"
+                    echo "[ \$local_DRY_RUN -eq 0 ] && ${local_tmp_data} || die ${c}" | sed "s|[[:space:]]*\$@PC>|   |"
                 fi
             done
             IFS=$old_IFS
@@ -1125,17 +1239,17 @@ function generate_component_function() {
                 if $(echo ${d} | grep -q '@P>') ; then
                     local_tmp_data=$(process_data ${d})
                     echo "    cmd \"${local_tmp_data}\"" | sed "s|[[:space:]]*\$@P>||"
-                    echo "[ \$DRY_RUN -eq 0 ] && ${local_tmp_data}" | sed "s|[[:space:]]*\$@P>|   |"
+                    echo "[ \$local_DRY_RUN -eq 0 ] && ${local_tmp_data}" | sed "s|[[:space:]]*\$@P>|   |"
                 fi
             done
-            echo "    cmd    export BLD_PATH=\${your_build_subdir_path}-programmer"
-            echo "    [ \$DRY_RUN -eq 0 ] && export BLD_PATH=\${your_build_subdir_path}-programmer"
+            echo "    cmd    export BLD_PATH=\$(realpath \${your_build_subdir_path}-programmer)"
+            echo "    [ \$local_DRY_RUN -eq 0 ] && export BLD_PATH=\$(realpath \${your_build_subdir_path}-programmer)"
             for d in ${data};
             do
                 if $(echo ${d} | grep -q '@PF') ; then
                     local_tmp_data=$(process_data ${d})
                     echo "    cmd \"${local_tmp_data}\"" | sed "s|[[:space:]]*\$@PF>||"
-                    echo "[ \$DRY_RUN -eq 0 ] && ${local_tmp_data} || die ${c}" | sed "s|[[:space:]]*\$@PF>|   |"
+                    echo "[ \$local_DRY_RUN -eq 0 ] && ${local_tmp_data} || die ${c}" | sed "s|[[:space:]]*\$@PF>|   |"
                 fi
             done
             IFS=$old_IFS
@@ -1156,7 +1270,7 @@ function generate_component_function() {
                 if $(echo ${d} | grep -q '@P>') ; then
                     local_tmp_data=$(process_data ${d})
                     echo "        cmd \"${local_tmp_data}\"" | sed "s|[[:space:]]*\$@P>||"
-                    echo "[ \$DRY_RUN -eq 0 ] && ${local_tmp_data}" | sed "s|[[:space:]]*\$@P>|       |"
+                    echo "[ \$local_DRY_RUN -eq 0 ] && ${local_tmp_data}" | sed "s|[[:space:]]*\$@P>|       |"
                 fi
             done
             IFS=$old_IFS
@@ -1166,14 +1280,17 @@ function generate_component_function() {
                 echo "        dir=\$(find .. -maxdepth 1 -type d | grep ${c} | tail -n 1)"
             fi
             echo "        # remove configured file step"
+            echo "        build_dir=\$(basename \${your_build_subdir_path})"
             echo "        [ -e ../source_code_configured-${c}-for-\${your_board_name} ] && cmd rm ../source_code_configured-${c}-for-\${your_board_name}"
-            echo "        [ \$DRY_RUN -eq 0 ] && [ -e ../source_code_configured-${c}-for-\${your_board_name} ] && rm ../source_code_configured-${c}-for-\${your_board_name}"
+            echo "        [ -e ../source_code_configured-${c}-for-\${your_board_name}-\${build_dir} ] && cmd rm ../source_code_configured-${c}-for-\${your_board_name}-\${build_dir}"
+            echo "        [ \$local_DRY_RUN -eq 0 ] && [ -e ../source_code_configured-${c}-for-\${your_board_name} ] && rm ../source_code_configured-${c}-for-\${your_board_name}"
+            echo "        [ \$local_DRY_RUN -eq 0 ] && [ -e ../source_code_configured-${c}-for-\${your_board_name}-\${build_dir} ] && rm ../source_code_configured-${c}-for-\${your_board_name}-\${build_dir}"
 
             echo "        # remove build directory"
             echo "        [ -d \${your_build_subdir_path} ] && cmd rm -rf \${your_build_subdir_path}"
-            echo "        [ \$DRY_RUN -eq 0 ] && [ -d \${your_build_subdir_path} ] && rm -rf \${your_build_subdir_path}"
+            echo "        [ \$local_DRY_RUN -eq 0 ] && [ -d \${your_build_subdir_path} ] && rm -rf \${your_build_subdir_path}"
             echo "        [ -d \${your_build_subdir_path}-programmer ] && cmd rm -rf \${your_build_subdir_path}-programmer"
-            echo "        [ \$DRY_RUN -eq 0 ] && [ -d \${your_build_subdir_path}-programmer ] && rm -rf \${your_build_subdir_path}-programmer"
+            echo "        [ \$local_DRY_RUN -eq 0 ] && [ -d \${your_build_subdir_path}-programmer ] && rm -rf \${your_build_subdir_path}-programmer"
             echo "    fi"
             echo "    cd \$localpath"
         fi
@@ -1192,7 +1309,7 @@ function generate_component_function() {
                 if $(echo ${d} | grep -q '@P>') ; then
                     local_tmp_data=$(process_data ${d})
                     echo "        cmd \"${local_tmp_data}\"" | sed "s|[[:space:]]*\$@P>||"
-                    echo "[ \$DRY_RUN -eq 0 ] && ${local_tmp_data}" | sed "s|[[:space:]]*\$@P>|       |"
+                    echo "[ \$local_DRY_RUN -eq 0 ] && ${local_tmp_data}" | sed "s|[[:space:]]*\$@P>|       |"
                 fi
             done
             IFS=$old_IFS
@@ -1204,7 +1321,7 @@ function generate_component_function() {
                 echo "        dir=\$(find . -maxdepth 1 -type d | grep ${c} | tail -n 1)"
             fi
             echo "        [ -d \$dir ] && cmd \"rm -rf \$dir\" ../source_code_extracted-${c}"
-            echo "        [ \$DRY_RUN -eq 0 ] && [ -d \$dir ] && rm -rf \$dir ../source_code_extracted-${c}"
+            echo "        [ \$local_DRY_RUN -eq 0 ] && [ -d \$dir ] && rm -rf \$dir ../source_code_extracted-${c}"
             echo "    fi"
             echo "    cd \$localpath"
         fi
@@ -1223,17 +1340,17 @@ function generate_component_function() {
                 if $(echo ${d} | grep -q '@P>') ; then
                     local_tmp_data=$(process_data ${d})
                     echo "    cmd \"${local_tmp_data}\"" | sed "s|[[:space:]]*\$@P>||"
-                    echo "[ \$DRY_RUN -eq 0 ] && ${local_tmp_data}" | sed "s|[[:space:]]*\$@P>|   |"
+                    echo "[ \$local_DRY_RUN -eq 0 ] && ${local_tmp_data}" | sed "s|[[:space:]]*\$@P>|   |"
                 fi
             done
             IFS=$old_IFS
-            echo "    cmd    export BLD_PATH=\${your_build_subdir_path}"
-            echo "    [ \$DRY_RUN -eq 0 ] && export BLD_PATH=\${your_build_subdir_path}"
-            echo "    cmd  export OUTPUT_BUILD_DIR=\$PWD/../build"
-            echo "    [ \$DRY_RUN -eq 0 ] && export OUTPUT_BUILD_DIR=\$PWD/../build"
+            echo "    cmd    export BLD_PATH=\$(realpath \${your_build_subdir_path})"
+            echo "    [ \$local_DRY_RUN -eq 0 ] && export BLD_PATH=\$(realpath \${your_build_subdir_path})"
+            echo "    cmd  export OUTPUT_BUILD_DIR=\${your_build_subdir_path}"
+            echo "    [ \$local_DRY_RUN -eq 0 ] && export OUTPUT_BUILD_DIR=\${your_build_subdir_path}"
             local_tmp_data="    make O=\"\${OUTPUT_BUILD_DIR}\" \${PARALLEL_MAKE} st/\${linux_dtb_name}.dtb KBUILD_EXTDTS=\${externaldt_path}/\${externaldt_linux_path}"
             echo "    cmd \"${local_tmp_data}\""
-            echo "[ \$DRY_RUN -eq 0 ] && ${local_tmp_data} || die ${c}"
+            echo "[ \$local_DRY_RUN -eq 0 ] && ${local_tmp_data} || die ${c}"
             echo "    cd \$localpath"
             echo "    echo \"**** ${c}_dtb ****END****\""
             echo "}"
@@ -1248,17 +1365,17 @@ function generate_component_function() {
                 if $(echo ${d} | grep -q '@P>') ; then
                     local_tmp_data=$(process_data ${d})
                     echo "    cmd \"${local_tmp_data}\"" | sed "s|[[:space:]]*\$@P>||"
-                    echo "[ \$DRY_RUN -eq 0 ] && ${local_tmp_data}" | sed "s|[[:space:]]*\$@P>|   |"
+                    echo "[ \$local_DRY_RUN -eq 0 ] && ${local_tmp_data}" | sed "s|[[:space:]]*\$@P>|   |"
                 fi
             done
             IFS=$old_IFS
-            echo "    cmd    export BLD_PATH=\${your_build_subdir_path}"
-            echo "    [ \$DRY_RUN -eq 0 ] && export BLD_PATH=\${your_build_subdir_path}"
-            echo "    cmd  export OUTPUT_BUILD_DIR=\$PWD/../build"
-            echo "    [ \$DRY_RUN -eq 0 ] && export OUTPUT_BUILD_DIR=\$PWD/../build"
+            echo "    cmd    export BLD_PATH=\$(realpath \${your_build_subdir_path})"
+            echo "    [ \$local_DRY_RUN -eq 0 ] && export BLD_PATH=\$(realpath \${your_build_subdir_path})"
+            echo "    cmd  export OUTPUT_BUILD_DIR=\${your_build_subdir_path}"
+            echo "    [ \$local_DRY_RUN -eq 0 ] && export OUTPUT_BUILD_DIR=\${your_build_subdir_path}"
             local_tmp_data="    make O=\"\${OUTPUT_BUILD_DIR}\" \${PARALLEL_MAKE} dtbs KBUILD_EXTDTS=\${externaldt_path}/\${externaldt_linux_path}"
             echo "    cmd \"${local_tmp_data}\""
-            echo "[ \$DRY_RUN -eq 0 ] && {local_tmp_data} || die ${c}"
+            echo "[ \$local_DRY_RUN -eq 0 ] && {local_tmp_data} || die ${c}"
             echo "    cd \$localpath"
             echo "    echo \"**** ${c}_dtbs ****END****\""
             echo "}"
@@ -1273,33 +1390,94 @@ function generate_component_function() {
                 if $(echo ${d} | grep -q '@P>') ; then
                     local_tmp_data=$(process_data ${d})
                     echo "    cmd \"${local_tmp_data}\"" | sed "s|[[:space:]]*\$@P>||"
-                    echo "[ \$DRY_RUN -eq 0 ] &&  ${local_tmp_data}" | sed "s|[[:space:]]*\$@P>|   |"
+                    echo "[ \$local_DRY_RUN -eq 0 ] &&  ${local_tmp_data}" | sed "s|[[:space:]]*\$@P>|   |"
                 fi
             done
             IFS=$old_IFS
-            echo "    cmd    export BLD_PATH=\${your_build_subdir_path}"
-            echo "    [ \$DRY_RUN -eq 0 ] && export BLD_PATH=\${your_build_subdir_path}"
-            echo "    cmd  export OUTPUT_BUILD_DIR=\$PWD/../build"
-            echo "    [ \$DRY_RUN -eq 0 ] && export OUTPUT_BUILD_DIR=\$PWD/../build"
+            echo "    cmd    export BLD_PATH=\$(realpath \${your_build_subdir_path})"
+            echo "    [ \$local_DRY_RUN -eq 0 ] && export BLD_PATH=\$(realpath \${your_build_subdir_path})"
+            echo "    cmd  export OUTPUT_BUILD_DIR=\${your_build_subdir_path}"
+            echo "    [ \$local_DRY_RUN -eq 0 ] && export OUTPUT_BUILD_DIR=\${your_build_subdir_path}"
             local_tmp_data="    make O=\"\${OUTPUT_BUILD_DIR}\" \${PARALLEL_MAKE} modules modules_install INSTALL_MOD_PATH=\"\${OUTPUT_BUILD_DIR}/install_artifact\" KBUILD_EXTDTS=\${externaldt_path}/\${externaldt_linux_path}"
             echo "    cmd \"${local_tmp_data}\"" | sed "s|[[:space:]]*\$@C>||"
-            echo "[ \$DRY_RUN -eq 0 ] && ${local_tmp_data} || die ${c}" | sed "s|[[:space:]]*\$@C>|   |"
+            echo "[ \$local_DRY_RUN -eq 0 ] && ${local_tmp_data} || die ${c}" | sed "s|[[:space:]]*\$@C>|   |"
 
             echo "    cmd \" mkdir -p \${FIP_DEPLOYDIR_ROOT}/kernel/modules\""
-            echo "    [ \$DRY_RUN -eq 0 ] &&  mkdir -p \${FIP_DEPLOYDIR_ROOT}/kernel/modules || die linux-stm32mp"
+            echo "    [ \$local_DRY_RUN -eq 0 ] &&  mkdir -p \${FIP_DEPLOYDIR_ROOT}/kernel/modules || die linux-stm32mp"
             echo "    cmd \" mkdir -p \${FIP_DEPLOYDIR_ROOT}/kernel/modules_stripped\""
-            echo "    [ \$DRY_RUN -eq 0 ] && mkdir -p \${FIP_DEPLOYDIR_ROOT}/kernel/modules_stripped || die linux-stm32mp"
+            echo "    [ \$local_DRY_RUN -eq 0 ] && mkdir -p \${FIP_DEPLOYDIR_ROOT}/kernel/modules_stripped || die linux-stm32mp"
             echo "    cmd \" rm \${OUTPUT_BUILD_DIR}/install_artifact/lib/modules/*/build\""
-            echo "    [ \$DRY_RUN -eq 0 ] && rm \${OUTPUT_BUILD_DIR}/install_artifact/lib/modules/*/build || die linux-stm32mp"
+            echo "    [ \$local_DRY_RUN -eq 0 ] && rm \${OUTPUT_BUILD_DIR}/install_artifact/lib/modules/*/build || die linux-stm32mp"
             echo "    cmd \" cp -ar \${OUTPUT_BUILD_DIR}/install_artifact/* \${FIP_DEPLOYDIR_ROOT}/kernel/modules\""
-            echo "    [ \$DRY_RUN -eq 0 ] && cp -ar \${OUTPUT_BUILD_DIR}/install_artifact/* \${FIP_DEPLOYDIR_ROOT}/kernel/modules || die linux-stm32mp"
+            echo "    [ \$local_DRY_RUN -eq 0 ] && cp -ar \${OUTPUT_BUILD_DIR}/install_artifact/* \${FIP_DEPLOYDIR_ROOT}/kernel/modules || die linux-stm32mp"
             echo "    cmd \" cp -ar \${OUTPUT_BUILD_DIR}/install_artifact/* \${FIP_DEPLOYDIR_ROOT}/kernel/modules_stripped\""
-            echo "    [ \$DRY_RUN -eq 0 ] && cp -ar \${OUTPUT_BUILD_DIR}/install_artifact/* \${FIP_DEPLOYDIR_ROOT}/kernel/modules_stripped || die linux-stm32mp"
+            echo "    [ \$local_DRY_RUN -eq 0 ] && cp -ar \${OUTPUT_BUILD_DIR}/install_artifact/* \${FIP_DEPLOYDIR_ROOT}/kernel/modules_stripped || die linux-stm32mp"
             echo "    cmd \" find \${FIP_DEPLOYDIR_ROOT}/kernel/modules_stripped -name "*.ko" | xargs \$STRIP --strip-debug --remove-section=.comment --remove-section=.note --preserve-dates\""
-            echo "    [ \$DRY_RUN -eq 0 ] && find \${FIP_DEPLOYDIR_ROOT}/kernel/modules_stripped -name \"*.ko\" | xargs \$STRIP --strip-debug --remove-section=.comment --remove-section=.note --preserve-dates || die linux-stm32mp"
+            echo "    [ \$local_DRY_RUN -eq 0 ] && find \${FIP_DEPLOYDIR_ROOT}/kernel/modules_stripped -name \"*.ko\" | xargs \$STRIP --strip-debug --remove-section=.comment --remove-section=.note --preserve-dates || die linux-stm32mp"
 
             echo "    cd \$localpath"
             echo "    echo \"**** ${c}_modules ****END****\""
+            echo "}"
+
+            echo "function ${c}_images {"
+            echo "    echo \"**** ${c}_images ****START****\""
+            echo "    localpath=\$PWD"
+            old_IFS=$IFS
+            IFS=$'\n'
+            for d in ${data};
+            do
+                if $(echo ${d} | grep -q '@P>') ; then
+                    local_tmp_data=$(process_data ${d})
+                    echo "    cmd \"${local_tmp_data}\"" | sed "s|[[:space:]]*\$@P>||"
+                    echo "[ \$local_DRY_RUN -eq 0 ] &&  ${local_tmp_data}" | sed "s|[[:space:]]*\$@P>|   |"
+                fi
+            done
+            echo "    cmd    export BLD_PATH=\$(realpath \${your_build_subdir_path})"
+            echo "    [ \$local_DRY_RUN -eq 0 ] && export BLD_PATH=\$(realpath \${your_build_subdir_path})"
+            echo "    cmd  export OUTPUT_BUILD_DIR=\${your_build_subdir_path}"
+            echo "    [ \$local_DRY_RUN -eq 0 ] && export OUTPUT_BUILD_DIR=\${your_build_subdir_path}"
+            for d in ${data};
+            do
+                if $(echo ${d} | grep -q '@CI') ; then
+                    local_tmp_data=$(process_data ${d})
+                    echo "    cmd \"${local_tmp_data}\"" | sed "s|[[:space:]]*\$@CI>||"
+                    echo "[ \$local_DRY_RUN -eq 0 ] && ${local_tmp_data} || die ${c}" | sed "s|[[:space:]]*\$@CI>|   |"
+                fi
+            done
+            IFS=$old_IFS
+            echo "    cd \$localpath"
+            echo "    echo \"**** ${c}_images ****END****\""
+            echo "}"
+
+            echo "function ${c}_menuconfig {"
+            echo "    echo \"**** ${c}_menuconfig ****START****\""
+            echo "    localpath=\$PWD"
+            old_IFS=$IFS
+            IFS=$'\n'
+            for d in ${data};
+            do
+                if $(echo ${d} | grep -q '@P>') ; then
+                    local_tmp_data=$(process_data ${d})
+                    echo "    cmd \"${local_tmp_data}\"" | sed "s|[[:space:]]*\$@P>||"
+                    echo "[ \$local_DRY_RUN -eq 0 ] && ${local_tmp_data}" | sed "s|[[:space:]]*\$@P>|   |"
+                fi
+            done
+
+            echo "    cmd    export BLD_PATH=\$(realpath \${your_build_subdir_path})"
+            echo "    [ \$local_DRY_RUN -eq 0 ] && export BLD_PATH=\$(realpath \${your_build_subdir_path})"
+            echo "    cmd  export OUTPUT_BUILD_DIR=\${your_build_subdir_path}"
+            echo "    [ \$local_DRY_RUN -eq 0 ] && export OUTPUT_BUILD_DIR=\${your_build_subdir_path}"
+            for d in ${data};
+            do
+                if $(echo ${d} | grep -q '@MC') ; then
+                    local_tmp_data=$(process_data ${d})
+                    echo "    cmd \"${local_tmp_data}\"" | sed "s|[[:space:]]*\$@MC>||"
+                    echo "[ \$local_DRY_RUN -eq 0 ] && ${local_tmp_data} || die ${c}" | sed "s|[[:space:]]*\$@MC>|   |"
+                fi
+            done
+            IFS=$old_IFS
+            echo "    cd \$localpath"
+            echo "    echo \"**** ${c}_menuconfig ****END****\""
             echo "}"
 
         fi
@@ -1321,9 +1499,10 @@ if [ $# -eq 0 ]; then
     usage
     exit 1
 fi
+GLOBAL_CONFIGURATION=""
 MX_NAME=""
+OVERWRITE_GENERATED_FILE=0
 while [[ $# -gt 0 ]]; do
-  GLOBAL_CONFIGURATION=$1
   case $1 in
     help)
       usage
@@ -1333,33 +1512,43 @@ while [[ $# -gt 0 ]]; do
       MACHINE=stm32mp1
       MX=1
       MX_NAME="-mx"
+      GLOBAL_CONFIGURATION=$1
       shift
       ;;
     stm32mp1)
       MACHINE=stm32mp1
       MX=0
+      GLOBAL_CONFIGURATION=$1
       shift;
       ;;
     stm32mp2-mx)
       MACHINE=stm32mp2
       MX=1
       MX_NAME="-mx"
+      GLOBAL_CONFIGURATION=$1
       shift
       ;;
     stm32mp2)
       MACHINE=stm32mp2
       MX=0
+      GLOBAL_CONFIGURATION=$1
       shift
       ;;
     stm32mp2-m33td-mx)
       MACHINE=stm32mp2-m33td
       MX=1
       MX_NAME="-mx"
+      GLOBAL_CONFIGURATION=$1
       shift
       ;;
     stm32mp2-m33td)
       MACHINE=stm32mp2-m33td
       MX=0
+      GLOBAL_CONFIGURATION=$1
+      shift
+      ;;
+    --overwrite)
+      OVERWRITE_GENERATED_FILE=1
       shift
       ;;
     *)
@@ -1369,6 +1558,10 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+if [ "X$GLOBAL_CONFIGURATION" = "X" ]; then
+    usage
+    exit 1
+fi
 if [ $MX -eq 1 ]; then
     info "MACHINE=$MACHINE MX"
 else
@@ -1380,16 +1573,34 @@ COMPONENTS=$(cat ${SCRIPT_PATH}/README.HOW_TO.txt.${MACHINE} | grep ^@ | sed "s/
 debug "COMPONENT LIST=>$COMPONENTS<"
 # generate list of components used for fip generation
 COMPONENTS_FIP=$(cat ${SCRIPT_PATH}/README.HOW_TO.txt.${MACHINE} | grep ^@F | sed "s/^@[A-Z]* //g")
-# create file name for outpu script file
+# generate list of components used for fip generation
+COMPONENTS_M33FW=$(cat ${SCRIPT_PATH}/README.HOW_TO.txt.${MACHINE} | grep ^@M | sed "s/^@[A-Z]* //g")
 
+# create file name for output script file
 OUTPUT_SCRIPT=${SCRIPT_PATH}/../sdk_compilation-${MACHINE}${MX_NAME}-my-custom-board.sh
 
 COMMON_SCRIPT_NAME=sdk_action-common-for-${GLOBAL_CONFIGURATION}.source
 OUTPUT_COMMON_SCRIPT=${SCRIPT_PATH}/../${COMMON_SCRIPT_NAME}
 
+# Verify if a precedent version of script generated exist
+if [ ${OVERWRITE_GENERATED_FILE} -eq 0 -a -f "${OUTPUT_COMMON_SCRIPT}" ];
+then
+    echo ""
+    echo "[WARNING]: A previous version of generated script exist on directory"
+    echo "[WARNING]:    '${OUTPUT_COMMON_SCRIPT}'"
+    echo "[WARNING]: would you like to continue and overwrite it: [Y/n]"
+    read -r answer
+    if [[ "$answer" =~ ^[Yy]+[ESes]* ]]; then
+        echo "[INFO] Overwrite previous version of ${OUTPUT_COMMON_SCRIPT}"
+        echo ""
+    else
+        echo "[INFO] Please save or rename generated script before to relaunch script"
+        exit 0
+    fi
+fi
+
 debug "Machine $MACHINE"
 debug "is MX machine = $MX"
-
 
 cat << EOF > $OUTPUT_SCRIPT
 #!/bin/bash
@@ -1403,11 +1614,12 @@ cat << EOF > $OUTPUT_COMMON_SCRIPT
 #!/bin/bash
 
 # do not execute the command, only display command if equal to 1
-DRY_RUN=0
+# > DRY_RUN=1 <script_name> <action>
+local_DRY_RUN=\${DRY_RUN:=0}
 
 # ----------------------------------------
 die() {
-    if [ \$DRY_RUN -eq 0 ]; then
+    if [ \$local_DRY_RUN -eq 0 ]; then
         >&2 echo "FAILED > BUILD ISSUE on \$*"
         exit 1
     fi
@@ -1427,7 +1639,7 @@ $(generate_action_set)
 if [ \$# -ne 1 ];
 then
     if [ "\$1" = "--dry-run" ]; then
-        DRY_RUN=1
+        local_DRY_RUN=1
         shift
         if [ \$# -ne 1 ];
         then
@@ -1444,6 +1656,9 @@ fi
 
 $(dump_stm32mp_config $MACHINE $MX)
 
+# source sdk environment
+source \${sdk_absolute_path}/\${sdk_env_file}
+
 case \$action in
 all)
 $(generate_action_all)
@@ -1457,8 +1672,14 @@ $(generate_action_compile)
 compile-for-fip)
 $(generate_action_compile_for_deploy)
     ;;
+compile-for-m33fw)
+$(generate_action_compile_m33fw_for_deploy)
+    ;;
 deploy-for-fip)
 $(generate_action_deploy_for_fip)
+    ;;
+deploy-for-m33fw)
+$(generate_action_deploy_for_m33fw)
     ;;
 deploy)
 $(generate_action_deploy)
@@ -1478,12 +1699,14 @@ $(generate_action_component)
     echo "\$0 [extract|compile|compile-for-fip|deploy|programmer|<component>-<action>]"
     echo "action:"
     echo "    extract: extract the source for all components"
-    echo "    compile-for-fip: compile all the component needed to generated fip"
-    echo "    deploy-for-fip:  deploy all the component needed to generated fip and generate fip"
-    echo "    compile:     compile all the component for runtime"
-    echo "    deploy:     generate the deploy with input of each components (need to have made compile of component before)"
+    echo "    compile-for-fip: compile all the component needed to generate fip"
+    echo "    deploy-for-fip:  deploy all the component needed to generate fip and generate fip"
+    echo "    compile-for-m33fw: compile all the component needed to generate m33fw"
+    echo "    deploy-for-m33fw:  deploy all the component needed to generate m33fw and generate m33fw"
+    echo "    compile:     build all the components for runtime"
+    echo "    deploy:     generate the deploy with input of each component (need to have made compile of component before)"
     echo "    programmer: binaries for programmer usage"
-    echo "    clean:      clean all components (remove all build directory, keep extracted source code)"
+    echo "    clean:      clean all components (remove all build directory, preserve source code)"
     echo "    cleanall:   clean all components (remove all build directory and extracted source code)"
 
     echo ""
@@ -1500,11 +1723,12 @@ $(generate_action_component)
     echo "    for linux-stm32mp there is to more possible action (already included on compil)"
     echo "         -dtb"
     echo "         -dtbs"
+    echo "         -images"
     echo "         -modules"
     echo "component:"
 $(generate_component_list)
     echo ""
-    echo "Preconize step:"
+    echo "Recommended step:"
     echo "    \$0  extract"
     echo "    \$0  compile-for-fip"
     echo "    \$0  deploy-for-fip"
@@ -1521,9 +1745,11 @@ cat << EOF >> $OUTPUT_COMMON_SCRIPT
     echo "   For stm32mp2-m33td machine, the M33 part"
     echo "    \$0  tf-m-stm32mp"
     echo "    \$0  m33tdprojects-starter-stm32mp2"
+    echo "Additionnal recommended step:"
+    echo "    \$0  compile-for-m33fw"
+    echo "    \$0  deploy-for-m33fw"
 EOF
     fi
-
 cat << EOF >> $OUTPUT_COMMON_SCRIPT
     ;;
 esac
@@ -1531,12 +1757,12 @@ EOF
 
 info ""
 info "******************************************"
-info "This script generated two files:"
+info "This script generates two files:"
 info "* one with all the command for compiling the components: $OUTPUT_COMMON_SCRIPT"
 info "* one for your custom configuration: $OUTPUT_SCRIPT"
 info ""
-info "You MUST fill the information on the custom file to match with your need "
-info "and it is preferable to rename the file to match with your need"
+info "You MUST fill the information on the custom file to match your needs "
+info "and it is preferable to rename the script according with your project name"
 info " (and not to be overwrited by a new launch of this script $0"
 info "******************************************"
 
