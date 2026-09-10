@@ -7,3 +7,6 @@ Available images for OpenSTLinux layers are:
       - Supported images:
           st-image-core         -   OpenSTLinux core image
 
+  - Other ATK images:
+      - Supported images:
+          atk-image-core         -   ATK core image
