@@ -4,9 +4,7 @@ inherit cubemx-stm32mp
 FILESEXTRAPATHS:prepend := "${THISDIR}/u-boot-stm32mp:"
 
 SRC_URI += " \
-	file://0001-uboot-ethernet-ok.patch \
-	file://0002-support-alientek-mipi-panel.patch \
-	file://0003-uboot-support-panel-w280bf036i-dsi-1-lane.patch \
+	file://0001-support-ATK-STM32MP257-board.patch \
 "
 
 # for generating external dt Makefile

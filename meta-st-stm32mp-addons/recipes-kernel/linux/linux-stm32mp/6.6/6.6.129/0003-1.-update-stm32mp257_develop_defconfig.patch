@@ -1,0 +1,75 @@
+From 0dd4227bc10d3c03ab67922a90d724442a96f012 Mon Sep 17 00:00:00 2001
+From: Sully <sully.niu@outlook.com>
+Date: Thu, 24 Sep 2026 15:30:57 +0800
+Subject: [PATCH 3/3] 1. update stm32mp257_develop_defconfig 2. fix MIPI
+ interface TIMEOUT
+
+---
+ arch/arm64/configs/stm32mp257_develop_defconfig |  7 +++----
+ drivers/gpu/drm/stm/dw_mipi_dsi-stm.c           | 11 ++++++-----
+ 2 files changed, 9 insertions(+), 9 deletions(-)
+
+diff --git a/arch/arm64/configs/stm32mp257_develop_defconfig b/arch/arm64/configs/stm32mp257_develop_defconfig
+index 4d58f811d..b21eb2c7f 100755
+--- a/arch/arm64/configs/stm32mp257_develop_defconfig
++++ b/arch/arm64/configs/stm32mp257_develop_defconfig
+@@ -1113,7 +1113,6 @@ CONFIG_IPV6_MROUTE_MULTIPLE_TABLES=y
+ CONFIG_IPV6_PIMSM_V2=y
+ CONFIG_IPV6_SEG6_LWTUNNEL=y
+ CONFIG_IPV6_SEG6_HMAC=y
+-CONFIG_IPV6_SEG6_BPF=y
+ # CONFIG_IPV6_RPL_LWTUNNEL is not set
+ # CONFIG_IPV6_IOAM6_LWTUNNEL is not set
+ # CONFIG_NETLABEL is not set
+@@ -3028,7 +3027,7 @@ CONFIG_MDIO_BUS_MUX_MMIOREG=y
+ #
+ # PCS device drivers
+ #
+-CONFIG_PCS_XPCS=m
++CONFIG_PCS_XPCS=y
+ # end of PCS device drivers
+ 
+ # CONFIG_PPP is not set
+@@ -5512,7 +5511,7 @@ CONFIG_SND_SOC_ES7134=m
+ CONFIG_SND_SOC_ES7241=m
+ CONFIG_SND_SOC_ES8316=m
+ # CONFIG_SND_SOC_ES8326 is not set
+-CONFIG_SND_SOC_ES8388=y
++CONFIG_SND_SOC_ES8388=m
+ # CONFIG_SND_SOC_ES8328_I2C is not set
+ # CONFIG_SND_SOC_ES8328_SPI is not set
+ CONFIG_SND_SOC_GTM601=m
+@@ -6396,7 +6395,7 @@ CONFIG_RTC_DRV_ISL1208=m
+ # CONFIG_RTC_DRV_PCF8523 is not set
+ CONFIG_RTC_DRV_PCF85063=m
+ CONFIG_RTC_DRV_PCF85363=m
+-CONFIG_RTC_DRV_PCF8563=y
++CONFIG_RTC_DRV_PCF8563=m
+ # CONFIG_RTC_DRV_PCF8583 is not set
+ CONFIG_RTC_DRV_M41T80=m
+ # CONFIG_RTC_DRV_M41T80_WDT is not set
+diff --git a/drivers/gpu/drm/stm/dw_mipi_dsi-stm.c b/drivers/gpu/drm/stm/dw_mipi_dsi-stm.c
+index 480053812..5048c9bef 100644
+--- a/drivers/gpu/drm/stm/dw_mipi_dsi-stm.c
++++ b/drivers/gpu/drm/stm/dw_mipi_dsi-stm.c
+@@ -529,11 +529,12 @@ static int dw_mipi_dsi_clk_enable(struct clk_hw *clk)
+ 	}
+ 
+ 	if (dsi->hw_version == HWVER_141) {
+-		ret = readl_poll_timeout_atomic(dsi->base + DSI_PSR, val, val & PSR_PSSC,
+-						SLEEP_US, TIMEOUT_US);
+-		if (ret)
+-			DRM_ERROR("!TIMEOUT! waiting PLL, let's continue\n");
+-
++		/*
++		 * Do not wait for PSR.PSSC here: phy is still held in reset by
++		 * dphy_init() and dphy_enable() (which releases reset and waits
++		 * for lock / stop-state) runs only after phy_ops->init().
++		 * Just enable the PLL; stop-state is checked in the bridge.
++		 */
+ 		dsi_set(dsi, DSI_WRPCR2, WRPCR2_PLLEN);
+ 	} else {
+ 		/* Enable the regulator */
+-- 
+2.43.0
+

@@ -409,7 +409,7 @@ calculate_size() {
     rootfs_extra_space=${@eval(d.getVar('IMAGE_ROOTFS_EXTRA_SPACE'))}
 
     size_kb=$(du --apparent-size -Pks $rootfs_path | awk -F' ' '{print $1}')
-    if [ $(convert_int $size_kb) -lt 1024 ]; then
+    if [ $(convert_int $size_kb) -lt 1 ]; then
         size_kb=1024
     fi
     base_size=$(${WORKDIR}/calculate_partition_size.py -a $rootfs_alignment -o $overhead_factor -e $rootfs_extra_space -s $size_kb)

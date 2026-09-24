@@ -15,7 +15,9 @@ LINUX_TARBASE = "linux-${LINUX_VERSION}${LINUX_SUBVERSION}"
 KERNEL_DEFCONFIG = "stm32mp257_defconfig"
 
 SRC_URI += " \
-    file://${LINUX_VERSION}/${LINUX_VERSION}${LINUX_SUBVERSION}/0001-kernel-panel-es8388-motorcomm-fusb302.patch \
+    file://${LINUX_VERSION}/${LINUX_VERSION}${LINUX_SUBVERSION}/0001-stm32mp257-custom-changes-panel-es8388-motorcomm-fus.patch \
+	file://${LINUX_VERSION}/${LINUX_VERSION}${LINUX_SUBVERSION}/0002-update-stm32mp257_defconfig.patch \
+	file://${LINUX_VERSION}/${LINUX_VERSION}${LINUX_SUBVERSION}/0003-1.-update-stm32mp257_develop_defconfig.patch \
     "
 
 # ------------------------------------------------
