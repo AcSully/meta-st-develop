@@ -1,0 +1,54 @@
+From 202e24d8f56135650d8df0fadf93995805528c3a Mon Sep 17 00:00:00 2001
+From: Sully <sully.niu@outlook.com>
+Date: Tue, 29 Sep 2026 18:24:34 +0800
+Subject: [PATCH 1/3] stm32mp2: fix build without a flash driver
+
+cpu.c uses CONFIG_SYS_MAX_FLASH_BANKS as a value in the BOOT_FLASH_NOR
+case, guarded by a runtime IS_ENABLED():
+
+      if (IS_ENABLED(CONFIG_SYS_MAX_FLASH_BANKS))
+              sprintf(cmd, "%d", CONFIG_SYS_MAX_FLASH_BANKS);
+      else
+              sprintf(cmd, "%d", 0);
+
+IS_ENABLED() evaluates at run time, so the compiler still has to resolve
+the macro inside the branch. CONFIG_SYS_MAX_FLASH_BANKS only exists when
+a flash driver selects USE_SYS_MAX_FLASH_BANKS (drivers/mtd/Kconfig:
+FLASH_CFI_DRIVER, ALTERA_QSPI, STM32_FLASH), so any configuration without
+CFI/NOR fails to build:
+
+  cpu.c:234:44: error: 'CONFIG_SYS_MAX_FLASH_BANKS' undeclared
+
+Use #if instead, which removes the branch before the compiler sees it.
+No behaviour change: boards with flash still report the bank count,
+boards without it still report 0.
+
+Co-Authored-By: Claude Code <noreply@anthropic.com>
+---
+ arch/arm/mach-stm32mp/stm32mp2/cpu.c | 10 ++++++----
+ 1 file changed, 6 insertions(+), 4 deletions(-)
+
+diff --git a/arch/arm/mach-stm32mp/stm32mp2/cpu.c b/arch/arm/mach-stm32mp/stm32mp2/cpu.c
+index cdde0729..8bb04de4 100644
+--- a/arch/arm/mach-stm32mp/stm32mp2/cpu.c
++++ b/arch/arm/mach-stm32mp/stm32mp2/cpu.c
+@@ -230,10 +230,12 @@ static void setup_boot_mode(void)
+ 		break;
+ 	case BOOT_FLASH_NOR:
+ 		env_set("boot_device", "nor");
+-		if (IS_ENABLED(CONFIG_SYS_MAX_FLASH_BANKS))
+-			sprintf(cmd, "%d", CONFIG_SYS_MAX_FLASH_BANKS);
+-		else
+-			sprintf(cmd, "%d", 0);
++		/* must be #if: the symbol is undefined without a flash driver */
++#if IS_ENABLED(CONFIG_SYS_MAX_FLASH_BANKS)
++		sprintf(cmd, "%d", CONFIG_SYS_MAX_FLASH_BANKS);
++#else
++		sprintf(cmd, "%d", 0);
++#endif
+ 		env_set("boot_instance", cmd);
+ 		break;
+ 	case BOOT_FLASH_HYPERFLASH:
+-- 
+2.43.0
+

@@ -1,7 +1,7 @@
 From b42ccfb29a2a759f6a14f94458a33bf8b4fae821 Mon Sep 17 00:00:00 2001
 From: Sully <sully.niu@outlook.com>
 Date: Mon, 21 Sep 2026 11:26:18 +0800
-Subject: [PATCH 2/3] update stm32mp257_defconfig
+Subject: [PATCH 2/9] update stm32mp257_defconfig
 
 update atk defconfig
 ---

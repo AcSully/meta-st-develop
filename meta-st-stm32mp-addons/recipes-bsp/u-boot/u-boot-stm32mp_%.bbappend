@@ -4,8 +4,23 @@ inherit cubemx-stm32mp
 FILESEXTRAPATHS:prepend := "${THISDIR}/u-boot-stm32mp:"
 
 SRC_URI += " \
-	file://0001-support-ATK-STM32MP257-board.patch \
+	file://0001-stm32mp2-fix-build-without-a-flash-driver.patch \
+	file://0002-support-ATK-STM32MP257-board.patch \
+	file://0003-stm32mp25-add-trimmed-defconfig-for-ATK-STM32MP257-b.patch \
 "
+
+# U-Boot's defconfig is the first field of UBOOT_CONFIG[<key>] (turned into
+# UBOOT_MACHINE by uboot-config.bbclass). stm32mp25_atk_defconfig lives in this
+# bbappend's file directory and is copied into ${S}/configs by
+# install_stm32mp25_atk_defconfig below. Equivalent of KERNEL_DEFCONFIG in
+# linux-stm32mp_%.bbappend.
+UBOOT_CONFIG[default_stm32mp25] = "stm32mp25_atk_defconfig,,u-boot.dtb"
+UBOOT_CONFIG[programmer_stm32mp25] = "stm32mp25_atk_defconfig,,u-boot.dtb"
+
+#install_stm32mp25_atk_defconfig() {
+#	install -m 0644 ${WORKDIR}/stm32mp25_atk_defconfig ${S}/configs/
+#}
+#do_generate_defconfig[prefuncs] += " install_stm32mp25_atk_defconfig"
 
 # for generating external dt Makefile
 SOC_UBOOT_CONFIG_SUPPORTED = "CONFIG_STM32MP13X CONFIG_STM32MP15X CONFIG_STM32MP21X CONFIG_STM32MP23X CONFIG_STM32MP25X"

@@ -1,0 +1,75 @@
+From e4d89951ddc2958428e8dbde033c807b076906d9 Mon Sep 17 00:00:00 2001
+From: Sully <sully.niu@outlook.com>
+Date: Wed, 14 Oct 2026 19:22:48 +0800
+Subject: [PATCH 9/9] net: phy: motorcomm: reapply YT8531 clock output
+ configuration on config_init
+
+The YT8531 clock output is configured from .probe() only, which runs once
+when the PHY is probed. Taking the MAC interface down and up stops and
+restarts the PHY, and the configuration is never re-applied, so the clock
+output stays disabled from then on.
+
+On boards that use the PHY as the RGMII reference clock source (no
+st,eth-clk-sel property, so the MAC takes its TX clock from the PHY's
+CLK125 output), losing that clock disables transmission completely: the
+MAC reports register access timeouts and no frame reaches the wire, while
+reception keeps working because it uses the PHY's RX_CLK.
+
+Extract the configuration into yt8531_clk_config() and call it from
+yt8531_config_init() as well. config_init runs on every phy_init_hw(),
+i.e. on probe, attach and resume, which is where this kind of hardware
+configuration belongs. The YT8521 family already handles its clock output
+on that path.
+
+Reproducer on an STM32MP25 board with a YT8531 in RGMII mode:
+
+    # ip link set end0 down && sleep 2 && ip link set end0 up
+    # ping -c 3 192.168.156.151
+    From 192.168.156.153 icmp_seq=1 Destination Host Unreachable
+    # dmesg | grep Timeout
+    stm32-dwmac 482d0000.eth2 end0: Timeout accessing MAC_VLAN_Tag_Filter
+
+Transmission only recovers after a reboot.
+---
+ drivers/net/phy/motorcomm.c | 11 ++++++++++-
+ 1 file changed, 10 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/net/phy/motorcomm.c b/drivers/net/phy/motorcomm.c
+index 7a11fdb68..0b47c53c1 100755
+--- a/drivers/net/phy/motorcomm.c
++++ b/drivers/net/phy/motorcomm.c
+@@ -1072,7 +1072,7 @@ static int yt8521_probe(struct phy_device *phydev)
+ 					  val);
+ }
+ 
+-static int yt8531_probe(struct phy_device *phydev)
++static int yt8531_clk_config(struct phy_device *phydev)
+ {
+ 	struct device_node *node = phydev->mdio.dev.of_node;
+ 	u16 mask, val;
+@@ -1109,6 +1109,11 @@ static int yt8531_probe(struct phy_device *phydev)
+ 					  val);
+ }
+ 
++static int yt8531_probe(struct phy_device *phydev)
++{
++	return yt8531_clk_config(phydev);
++}
++
+ /**
+  * ytphy_utp_read_lpa() - read LPA then setup lp_advertising for utp
+  * @phydev: a pointer to a &struct phy_device
+@@ -1610,6 +1615,10 @@ static int yt8531_config_init(struct phy_device *phydev)
+ 	struct device_node *node = phydev->mdio.dev.of_node;
+ 	int ret;
+ 
++	ret = yt8531_clk_config(phydev);
++	if (ret < 0)
++		return ret;
++
+ 	ret = ytphy_rgmii_clk_delay_config_with_lock(phydev);
+ 	if (ret < 0)
+ 		return ret;
+-- 
+2.43.0
+

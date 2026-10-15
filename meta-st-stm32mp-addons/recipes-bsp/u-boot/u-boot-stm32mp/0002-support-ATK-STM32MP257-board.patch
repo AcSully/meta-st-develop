@@ -1,224 +1,291 @@
-From 1f11e0b78d14f574058311e2c247aad39fed7fc5 Mon Sep 17 00:00:00 2001
+From 53deea7da81f59c13ebe3d302586f9d6735478a9 Mon Sep 17 00:00:00 2001
 From: Sully <sully.niu@outlook.com>
 Date: Wed, 16 Sep 2026 10:27:33 +0800
-Subject: [PATCH] support ATK STM32MP257 board
+Subject: [PATCH 2/3] support ATK STM32MP257 board
 
 ---
- board/st/stm32mp2/stm32mp2.c         |  17 ++
- boot/image-fdt.c                     |  16 ++
- configs/stm32mp25_defconfig          |   2 +
- drivers/net/phy/phy.c                |  84 ++++++++
- drivers/video/Kconfig                |  14 ++
+ board/st/stm32mp2/stm32mp2.c         |  41 ++++
+ configs/stm32mp25_defconfig          |   1 +
+ drivers/net/phy/Kconfig              |  10 +
+ drivers/net/phy/phy.c                | 138 +++++++++++++
+ drivers/video/Kconfig                |  18 ++
  drivers/video/Makefile               |   2 +
  drivers/video/panel-alientek-mipi.c  | 290 +++++++++++++++++++++++++++
  drivers/video/panel-w280bf036i-dsi.c | 261 ++++++++++++++++++++++++
- include/configs/stm32mp25_common.h   |   1 +
- 9 files changed, 687 insertions(+)
+ 8 files changed, 761 insertions(+)
  create mode 100755 drivers/video/panel-alientek-mipi.c
  create mode 100755 drivers/video/panel-w280bf036i-dsi.c
 
 diff --git a/board/st/stm32mp2/stm32mp2.c b/board/st/stm32mp2/stm32mp2.c
-index fdffb041..fe5eb263 100644
+index fdffb041..03f25773 100644
 --- a/board/st/stm32mp2/stm32mp2.c
 +++ b/board/st/stm32mp2/stm32mp2.c
-@@ -612,6 +612,17 @@ int mmc_get_env_dev(void)
- 	return mmc_get_boot();
+@@ -743,6 +743,41 @@ static int fixup_stm32mp2xx_disco_panel(void *blob)
+ 	return 0;
  }
  
-+/******************** ALIENTEK ADD START ********************/
-+#ifdef ALIENTEK_MIPI_RGB_LCD
-+int alientek_set_mipi_lcd(void)
++#if IS_ENABLED(CONFIG_VIDEO_LCD_ALIENTEK_MIPI)
++/*
++ * The ALIENTEK MIPI panels are described by the Linux DT through a /dsi_lcd_id
++ * node whose "dsi_select_id" property tells the kernel which timing set to
++ * use. That node only exists in the kernel DT of boards actually fitted with
++ * such a panel, so this is a no-op on every other board.
++ */
++#define ATK_DSI_LCD_ID_DEFAULT	2	/* 5.5" 720x1280 @ 61 MHz */
++
++static int fixup_atk_dsi_lcd(void *blob)
 +{
-+	int dsi_lcd_id = 2; //atk_mipi_dsi_5x5_720x1280
-+	env_set("dsi_lcd_id", "2");
-+	return dsi_lcd_id;
++	const char *env_id = env_get("dsi_lcd_id");
++	u32 dsi_id = ATK_DSI_LCD_ID_DEFAULT;
++	int nodeoff;
++
++	nodeoff = fdt_path_offset(blob, "/dsi_lcd_id");
++	if (nodeoff < 0) {
++		debug("%s: no /dsi_lcd_id node in the kernel DT\n", __func__);
++		return 0;
++	}
++
++	if (env_id) {
++		u32 id = dectoul(env_id, NULL);
++
++		if (id && id < 10)
++			dsi_id = id;
++		else
++			log_warning("%s: ignoring invalid dsi_lcd_id=%s\n",
++				    __func__, env_id);
++	}
++
++	return fdt_setprop_u32(blob, nodeoff, "dsi_select_id", dsi_id);
 +}
 +#endif
-+/******************** ALIENTEK ADD END ********************/
 +
- int board_late_init(void)
+ int ft_board_setup(void *blob, struct bd_info *bd)
  {
- 	const void *fdt_compat;
-@@ -646,6 +657,12 @@ int board_late_init(void)
- 	if (CONFIG_IS_ENABLED(FASTBOOT_FLASH_MMC))
- 		env_set("fastboot.mmcdev", __stringify(CONFIG_FASTBOOT_FLASH_MMC_DEV));
+ 	int ret;
+@@ -764,6 +799,12 @@ int ft_board_setup(void *blob, struct bd_info *bd)
+ 			log_err("Error during panel fixup ! (%d)\n", ret);
+ 	}
  
-+/******************** ALIENTEK ADD START ********************/
-+#ifdef ALIENTEK_MIPI_RGB_LCD
-+	alientek_set_mipi_lcd();
++#if IS_ENABLED(CONFIG_VIDEO_LCD_ALIENTEK_MIPI)
++	ret = fixup_atk_dsi_lcd(blob);
++	if (ret)
++		log_err("Error during DSI panel fixup ! (%d)\n", ret);
 +#endif
-+/******************** ALIENTEK ADD end ********************/
 +
  	return 0;
  }
  
-diff --git a/boot/image-fdt.c b/boot/image-fdt.c
-index f10200f6..959836bc 100644
---- a/boot/image-fdt.c
-+++ b/boot/image-fdt.c
-@@ -170,6 +170,11 @@ int boot_relocate_fdt(struct lmb *lmb, char **of_flat_tree, ulong *of_size)
- 	int	err;
- 	int	disable_relocation = 0;
- 
-+#ifdef ALIENTEK_MIPI_RGB_LCD
-+	int nodeoffset_dsi;
-+    int dsi_timings_id; 
-+#endif
-+
- 	/* nothing to do */
- 	if (*of_size == 0)
- 		return 0;
-@@ -179,6 +184,17 @@ int boot_relocate_fdt(struct lmb *lmb, char **of_flat_tree, ulong *of_size)
- 		goto error;
- 	}
- 
-+#ifdef ALIENTEK_MIPI_RGB_LCD
-+	dsi_timings_id = (int)((*(env_get("dsi_lcd_id"))) - '0');
-+	if (dsi_timings_id == 2) {
-+		nodeoffset_dsi = fdt_path_offset(fdt_blob, "/dsi_lcd_id");
-+		if (nodeoffset_dsi < 0) {
-+			printf("cannot find /dsi_lcd_id in linux kernel fdtfile\n");
-+		}
-+		fdt_setprop_u32(fdt_blob, nodeoffset_dsi, "dsi_select_id", dsi_timings_id);
-+	}
-+#endif
-+
- 	/* position on a 4K boundary before the alloc_current */
- 	/* Pad the FDT by a specified amount */
- 	of_len = *of_size + CONFIG_SYS_FDT_PAD;
 diff --git a/configs/stm32mp25_defconfig b/configs/stm32mp25_defconfig
-index 0c8359a9..ab7ae0a4 100644
+index 0c8359a9..9aa16027 100644
 --- a/configs/stm32mp25_defconfig
 +++ b/configs/stm32mp25_defconfig
-@@ -195,3 +195,5 @@ CONFIG_FWU_MULTI_BANK_UPDATE=y
+@@ -195,3 +195,4 @@ CONFIG_FWU_MULTI_BANK_UPDATE=y
  CONFIG_FWU_MDATA_V2=y
  # CONFIG_TOOLS_MKEFICAPSULE is not set
  # CONFIG_TOOLS_MKFWUMDATA is not set
 +CONFIG_VIDEO_LCD_ALIENTEK_MIPI=y
-+CONFIG_VIDEO_LCD_W280BF036I_DSI=y
+diff --git a/drivers/net/phy/Kconfig b/drivers/net/phy/Kconfig
+index 0c3c39a5..5dc239ef 100644
+--- a/drivers/net/phy/Kconfig
++++ b/drivers/net/phy/Kconfig
+@@ -226,6 +226,16 @@ config PHY_MOTORCOMM
+ 	  Enables support for Motorcomm network PHYs.
+ 	  Currently supports the YT8531 Gigabit Ethernet PHYs.
+ 
++config PHY_YT8531_ALIENTEK_INIT
++	bool "ALIENTEK YT8531 clock/LED/RGMII delay bring-up"
++	depends on PHY
++	help
++	  Board specific initialisation for the Motorcomm YT8531 PHY as wired
++	  on the ALIENTEK STM32MP25 boards: select the 125 MHz output clock,
++	  configure the LED behaviour and apply the RGMII delays.
++	  This is applied by genphy_update_link() whenever a YT8531 is found,
++	  so it should only be enabled on boards that need it.
++
+ config PHY_MSCC
+ 	bool "Microsemi Corp Ethernet PHYs support"
+ 
 diff --git a/drivers/net/phy/phy.c b/drivers/net/phy/phy.c
-index ae21acb0..57382085 100644
+index ae21acb0..5c8d07f5 100644
 --- a/drivers/net/phy/phy.c
 +++ b/drivers/net/phy/phy.c
-@@ -214,6 +214,71 @@ int genphy_config_aneg(struct phy_device *phydev)
+@@ -214,6 +214,131 @@ int genphy_config_aneg(struct phy_device *phydev)
  	return result;
  }
  
-+/*********************alientek add start***************************/
-+#define YT8531_REG_DEBUG_ADDR_OFFSET		0x1e
-+#define YT8531_REG_DEBUG_DATA				0x1f
++#if IS_ENABLED(CONFIG_PHY_YT8531_ALIENTEK_INIT)
++/*
++ * The Motorcomm YT8531 PHY as wired on the ALIENTEK STM32MP25 boards needs a
++ * 125 MHz output clock, a specific LED behaviour and RGMII delays programmed
++ * through its extended register space. Those boards describe the PHY with a
++ * generic binding, so the setup is done here, keyed off the PHY ID, instead
++ * of by a dedicated PHY driver.
++ */
++#define YT8531_REG_DEBUG_ADDR_OFFSET	0x1e
++#define YT8531_REG_DEBUG_DATA		0x1f
++
++#define YT8531_EXTREG_CLK		0xa012
++#define YT8531_EXTREG_CLK_125M		0xd0
++#define YT8531_EXTREG_RGMII_DELAY	0xa001
++#define YT8531_EXTREG_RGMII_TX_DELAY	0xa003
++#define YT8531_EXTREG_LED_YELLOW	0xa00e
++#define YT8531_EXTREG_LED_GREEN		0xa00d
++
++/* the extended register write needs to settle, so bound the retries */
++#define YT8531_XTAL_RETRY		5
 +
 +static int yt8531_rd_ext(struct phy_device *phydev, u32 regnum)
 +{
-+	int val;
++	int ret;
 +
-+	phy_write(phydev, MDIO_DEVAD_NONE, YT8531_REG_DEBUG_ADDR_OFFSET, regnum);
-+	val = phy_read(phydev, MDIO_DEVAD_NONE, YT8531_REG_DEBUG_DATA);
-+	
-+	return val;
++	ret = phy_write(phydev, MDIO_DEVAD_NONE, YT8531_REG_DEBUG_ADDR_OFFSET,
++			regnum);
++	if (ret < 0)
++		return ret;
++
++	return phy_read(phydev, MDIO_DEVAD_NONE, YT8531_REG_DEBUG_DATA);
 +}
 +
 +static int yt8531_wr_ext(struct phy_device *phydev, u32 regnum, u16 val)
 +{
 +	int ret;
 +
-+	ret = phy_write(phydev, MDIO_DEVAD_NONE, YT8531_REG_DEBUG_ADDR_OFFSET, regnum);
-+	ret = phy_write(phydev, MDIO_DEVAD_NONE, YT8531_REG_DEBUG_DATA, val);
-+	
-+	return ret;
++	ret = phy_write(phydev, MDIO_DEVAD_NONE, YT8531_REG_DEBUG_ADDR_OFFSET,
++			regnum);
++	if (ret < 0)
++		return ret;
++
++	return phy_write(phydev, MDIO_DEVAD_NONE, YT8531_REG_DEBUG_DATA, val);
 +}
 +
-+int yt8531_xtal_init(struct phy_device *phydev)
++static int yt8531_xtal_init(struct phy_device *phydev)
 +{
-+	int ret = 0;
-+	int val = 0;
++	int val = 0, ret, retry;
 +
 +	mdelay(50);
 +
-+	do {
-+		ret = yt8531_wr_ext(phydev, 0xa012, 0x88);
++	for (retry = 0; retry < YT8531_XTAL_RETRY; retry++) {
++		ret = yt8531_wr_ext(phydev, YT8531_EXTREG_CLK, 0x88);
 +		if (ret < 0)
 +			return ret;
 +
 +		mdelay(100);
 +
-+		val = yt8531_rd_ext(phydev, 0xa012);
++		val = yt8531_rd_ext(phydev, YT8531_EXTREG_CLK);
 +		if (val < 0)
 +			return val;
 +
 +		mdelay(20);
-+	} while (val != 0x88);
 +
-+	ret = yt8531_wr_ext(phydev, 0xa012, 0xd0); //125MHz
++		if (val == 0x88)
++			break;
++	}
++
++	if (retry == YT8531_XTAL_RETRY) {
++		pr_err("YT8531: reg 0x%x never latched 0x88 (read 0x%x)\n",
++		       YT8531_EXTREG_CLK, val);
++		return -ETIMEDOUT;
++	}
++
++	return yt8531_wr_ext(phydev, YT8531_EXTREG_CLK, YT8531_EXTREG_CLK_125M);
++}
++
++static int yt8531_led_init(struct phy_device *phydev)
++{
++	int ret;
++
++	/* yellow led blink */
++	ret = yt8531_wr_ext(phydev, YT8531_EXTREG_LED_YELLOW, 0x2600);
 +	if (ret < 0)
 +		return ret;
 +
-+	return ret;
++	/* 10/100M/1000M green led always light */
++	return yt8531_wr_ext(phydev, YT8531_EXTREG_LED_GREEN, 0x70);
 +}
 +
-+void yt8531_led_init(struct phy_device *phydev)
++static int yt8531_delay_init(struct phy_device *phydev)
 +{
-+	yt8531_wr_ext(phydev, 0xa00e, 0x2600);	//yellow led blink
-+	yt8531_wr_ext(phydev, 0xa00d, 0x70);	//10_100M_1000M green led always light
++	int ret;
++
++	/* TXC/RXC: 2ns delays */
++	ret = yt8531_wr_ext(phydev, YT8531_EXTREG_RGMII_DELAY, 0x8100);
++	if (ret < 0)
++		return ret;
++
++	/* RGMII TX_CLK delay: 300ps */
++	return yt8531_wr_ext(phydev, YT8531_EXTREG_RGMII_TX_DELAY, 0x0002);
 +}
 +
-+void yt8531_delay_init(struct phy_device *phydev)
++static int yt8531_alientek_init(struct phy_device *phydev)
 +{
-+	yt8531_wr_ext(phydev, 0xa001, 0x8100);	//TXC/RXC: 2ns delays
-+	yt8531_wr_ext(phydev, 0xa003, 0x0002);	//RGMII TX_CLK delay: 300ps delays
++	int ret;
++
++	ret = yt8531_xtal_init(phydev);
++	if (ret < 0) {
++		pr_err("YT8531: 125MHz clock setup failed: %d\n", ret);
++		return ret;
++	}
++
++	ret = yt8531_led_init(phydev);
++	if (ret < 0)
++		pr_warn("YT8531: LED setup failed: %d\n", ret);
++
++	ret = yt8531_delay_init(phydev);
++	if (ret < 0)
++		pr_warn("YT8531: RGMII delay setup failed: %d\n", ret);
++
++	return 0;
 +}
-+/*********************alientek add end***************************/
++#endif /* CONFIG_PHY_YT8531_ALIENTEK_INIT */
 +
  /**
   * genphy_update_link - update link status in @phydev
   * @phydev: target phy_device struct
-@@ -226,6 +291,25 @@ int genphy_update_link(struct phy_device *phydev)
+@@ -226,6 +351,19 @@ int genphy_update_link(struct phy_device *phydev)
  {
  	unsigned int mii_reg;
  
-+	/************alientek add start********/
-+	int ret = 0;
++#if IS_ENABLED(CONFIG_PHY_YT8531_ALIENTEK_INIT)
 +	unsigned int phyid1, phyid2;
++	int ret;
 +
 +	phyid1 = phy_read(phydev, MDIO_DEVAD_NONE, MII_PHYSID1);
 +	phyid2 = phy_read(phydev, MDIO_DEVAD_NONE, MII_PHYSID2);
-+	if((phyid1 == 0x4f51) && (phyid2 == 0xe91b)) { //YT8531 ID
-+		ret = yt8531_xtal_init(phydev);
-+		if (ret < 0)
-+		{
-+			printf("yt8531_xtal_init failed.\r\n");
++	if (phyid1 == 0x4f51 && phyid2 == 0xe91b) {	/* YT8531 */
++		ret = yt8531_alientek_init(phydev);
++		if (ret)
 +			return ret;
-+		}
-+
-+		yt8531_led_init(phydev);
-+		yt8531_delay_init(phydev);
 +	}
-+	/************alientek add end********/
-+	
++#endif
++
  	/*
  	 * Wait if the link is up, and autonegotiation is in progress
  	 * (ie - we're capable and it's not done)
 diff --git a/drivers/video/Kconfig b/drivers/video/Kconfig
-index d92d5be8..ec0e58f7 100644
+index d92d5be8..cc99ad34 100644
 --- a/drivers/video/Kconfig
 +++ b/drivers/video/Kconfig
-@@ -547,6 +547,20 @@ config VIDEO_LCD_RENESAS_R69328
+@@ -547,6 +547,24 @@ config VIDEO_LCD_RENESAS_R69328
  	  IPS-LCD module with Renesas R69328 IC. The panel has a 720x1280
  	  resolution and uses 24 bit RGB per pixel.
  
 +config VIDEO_LCD_ALIENTEK_MIPI
 +	bool "ALIENTEK MIPI DSI LCD panel support"
++	depends on PANEL && BACKLIGHT
 +	select VIDEO_MIPI_DSI
 +	help
-+	Say Y here if you want to enable support for the ALIENTEK MIPI
-+	DSI panel used on STM32MP2 boards.
++	  Say Y here if you want to enable support for the ALIENTEK MIPI
++	  DSI panel used on STM32MP2 boards.
++	  This also enables the fixup that passes the panel selection from
++	  U-Boot to the Linux kernel DT.
 +
 +config VIDEO_LCD_W280BF036I_DSI
 +	bool "W280BF036I 1-lane MIPI DSI LCD panel support"
++	depends on PANEL && BACKLIGHT
 +	select VIDEO_MIPI_DSI
 +	help
-+	Say Y here if you want to enable support for the W280BF036I
-+	1-lane MIPI DSI panel used on STM32MP2 boards.
++	  Say Y here if you want to enable support for the W280BF036I
++	  1-lane MIPI DSI panel used on STM32MP2 boards.
 +
  config VIDEO_LCD_ROCKTECH_HX8394
  	bool "ROCKTECH HX8394 DSI LCD panel support"
@@ -799,18 +866,6 @@ index 00000000..676d51a3
 +	.priv_auto	= sizeof(struct alientek_panel_priv),
 +};
 +
-diff --git a/include/configs/stm32mp25_common.h b/include/configs/stm32mp25_common.h
-index 711b8243..4f015bb6 100644
---- a/include/configs/stm32mp25_common.h
-+++ b/include/configs/stm32mp25_common.h
-@@ -25,6 +25,7 @@
- 	EFI_GUID(0x19d5df83, 0x11b0, 0x457b, 0xbe, 0x2c, \
- 		 0x75, 0x59, 0xc1, 0x31, 0x42, 0xa5)
- 
-+#define ALIENTEK_MIPI_RGB_LCD
- /*****************************************************************************/
- #ifdef CONFIG_DISTRO_DEFAULTS
- /*****************************************************************************/
 -- 
 2.43.0
 

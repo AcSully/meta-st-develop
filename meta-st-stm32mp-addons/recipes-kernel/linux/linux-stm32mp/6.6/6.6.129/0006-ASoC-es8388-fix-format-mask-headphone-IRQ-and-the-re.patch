@@ -1,0 +1,159 @@
+From 2a9610dde1ca7b74a5ab613014e1cd11b44a694b Mon Sep 17 00:00:00 2001
+From: Sully <sully.niu@outlook.com>
+Date: Thu, 8 Oct 2026 16:37:44 +0800
+Subject: [PATCH 6/9] ASoC: es8388: fix format mask, headphone IRQ and the
+ remove path
+
+- es8388_FORMATS mixed SNDRV_PCM_FORMAT_S32_LE (a format number, 10) into
+  a mask of SNDRV_PCM_FMTBIT_* values. That advertised bogus U8 and
+  S16_BE formats and never advertised S32_LE, although hw_params() handles
+  it. Use SNDRV_PCM_FMTBIT_S32_LE.
+
+- hp_det_irq_handler() dereferenced the es8388_private global, which is
+  only assigned at the end of probe, i.e. after the interrupt was
+  requested. An interrupt latched during probe would NULL-dereference.
+  Use the dev_id cookie and keep it NULL-safe.
+
+- remove() leaked the delayed work, the MCLK and the regulators. The work
+  is armed from hw_params() and writes the regmap 2s later, so unloading
+  in that window was a use-after-free. Cancel it, disable the clock and
+  the supplies, and drop the global.
+
+- set_bias_level() could call clk_disable_unprepare() twice for MCLK;
+  track the enabled state.
+
+- Check the devm_regmap_init_i2c() error instead of dereferencing a bad
+  regmap later, and NULL-check the codec global in shutdown().
+
+Co-Authored-By: Claude Code <noreply@anthropic.com>
+---
+ sound/soc/codecs/es8388.c | 53 ++++++++++++++++++++++++++++++++-------
+ 1 file changed, 44 insertions(+), 9 deletions(-)
+
+diff --git a/sound/soc/codecs/es8388.c b/sound/soc/codecs/es8388.c
+index 357b76c3a..d7b9012ce 100755
+--- a/sound/soc/codecs/es8388.c
++++ b/sound/soc/codecs/es8388.c
+@@ -56,6 +56,7 @@ struct es8388_priv {
+     bool hp_inserted;
+     bool spk_gpio_level;
+     bool hp_det_level;
++    bool mclk_enabled;
+ 
+     struct delayed_work pcm_pop_work;
+ };
+@@ -78,7 +79,10 @@ static int es8388_set_gpio(int gpio, bool level)
+ 
+ static irqreturn_t hp_det_irq_handler(int irq, void *dev_id)
+ {
+-    struct es8388_priv *es8388 = es8388_private;
++    struct es8388_priv *es8388 = dev_id;
++
++    if (!es8388)
++        return IRQ_NONE;
+ 
+     if (gpiod_get_value(es8388->hp_det_gpio))
+         es8388->hp_inserted = 0;
+@@ -661,11 +665,17 @@ static int es8388_set_bias_level(struct snd_soc_codec *codec,
+         if (IS_ERR(es8388->mclk))
+             break;
+         if (snd_soc_codec_get_bias_level(codec) == SND_SOC_BIAS_ON) {
+-            clk_disable_unprepare(es8388->mclk);
++            if (es8388->mclk_enabled) {
++                clk_disable_unprepare(es8388->mclk);
++                es8388->mclk_enabled = false;
++            }
+         } else {
+-            ret = clk_prepare_enable(es8388->mclk);
+-            if (ret)
+-                return ret;
++            if (!es8388->mclk_enabled) {
++                ret = clk_prepare_enable(es8388->mclk);
++                if (ret)
++                    return ret;
++                es8388->mclk_enabled = true;
++            }
+         }
+         snd_soc_write(codec, ES8388_ANAVOLMANAG, 0x7C);
+         snd_soc_write(codec, ES8388_CHIPLOPOW1, 0x00);
+@@ -682,8 +692,10 @@ static int es8388_set_bias_level(struct snd_soc_codec *codec,
+         snd_soc_write(codec, ES8388_ADCPOWER, 0x59);
+         break;
+     case SND_SOC_BIAS_OFF:
+-        if (es8388->mclk)
++        if (es8388->mclk_enabled) {
+             clk_disable_unprepare(es8388->mclk);
++            es8388->mclk_enabled = false;
++        }
+         dev_dbg(codec->dev, "%s off\n", __func__);
+         snd_soc_write(codec, ES8388_ADCPOWER, 0xFF);
+         //snd_soc_write(codec, ES8388_DACPOWER, 0xC0);
+@@ -706,7 +718,7 @@ static int es8388_of_xlate_dai_id(struct snd_soc_component *component,
+ #define es8388_RATES SNDRV_PCM_RATE_8000_96000
+ 
+ #define es8388_FORMATS (SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S20_3LE |\
+-    SNDRV_PCM_FMTBIT_S24_LE | SNDRV_PCM_FORMAT_S32_LE)
++    SNDRV_PCM_FMTBIT_S24_LE | SNDRV_PCM_FMTBIT_S32_LE)
+ 
+ static const struct snd_soc_dai_ops es8388_ops = {
+     // .startup = es8388_pcm_startup,
+@@ -909,6 +921,7 @@ static int es8388_i2c_probe(struct i2c_client *i2c)
+     ret = clk_prepare_enable(es8388->mclk);
+     if (ret)
+         return ret;
++    es8388->mclk_enabled = true;
+ #endif
+ 
+ 	for (int i = 0; i < ARRAY_SIZE(es8388->supplies); i++)
+@@ -929,6 +942,11 @@ static int es8388_i2c_probe(struct i2c_client *i2c)
+ 	}
+ 
+     es8388->regmap = devm_regmap_init_i2c(i2c, &es8388_regmap_config);
++    if (IS_ERR(es8388->regmap)) {
++        dev_err(&i2c->dev, "Failed to init regmap: %ld\n",
++                PTR_ERR(es8388->regmap));
++        return PTR_ERR(es8388->regmap);
++    }
+     INIT_DELAYED_WORK(&es8388->pcm_pop_work,
+                 pcm_pop_work_events);
+     ret = snd_soc_register_codec(&i2c->dev,
+@@ -942,7 +960,23 @@ static int es8388_i2c_probe(struct i2c_client *i2c)
+ 
+ static void es8388_i2c_remove(struct i2c_client *client)
+ {
++    struct es8388_priv *es8388 = es8388_private;
++
+     snd_soc_unregister_codec(&client->dev);
++
++    if (!es8388)
++        return;
++
++    cancel_delayed_work_sync(&es8388->pcm_pop_work);
++
++    if (es8388->mclk_enabled) {
++        clk_disable_unprepare(es8388->mclk);
++        es8388->mclk_enabled = false;
++    }
++
++    regulator_bulk_disable(ARRAY_SIZE(es8388->supplies), es8388->supplies);
++
++    es8388_private = NULL;
+ }
+ 
+ static const struct i2c_device_id es8388_i2c_id[] = {
+@@ -952,9 +986,10 @@ static const struct i2c_device_id es8388_i2c_id[] = {
+ 
+ MODULE_DEVICE_TABLE(i2c, es8388_i2c_id);
+ 
+-void es8388_i2c_shutdown(struct i2c_client *client)
++static void es8388_i2c_shutdown(struct i2c_client *client)
+ {
+-    // struct es8388_priv *es8388 = es8388_private;
++    if (!es8388_codec)
++        return;
+ 
+     mdelay(20);
+     snd_soc_write(es8388_codec, ES8388_CONTROL2, 0x58);
+-- 
+2.43.0
+

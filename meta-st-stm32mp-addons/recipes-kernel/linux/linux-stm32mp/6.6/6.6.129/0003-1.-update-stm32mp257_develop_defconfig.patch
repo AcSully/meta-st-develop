@@ -1,7 +1,7 @@
 From 0dd4227bc10d3c03ab67922a90d724442a96f012 Mon Sep 17 00:00:00 2001
 From: Sully <sully.niu@outlook.com>
 Date: Thu, 24 Sep 2026 15:30:57 +0800
-Subject: [PATCH 3/3] 1. update stm32mp257_develop_defconfig 2. fix MIPI
+Subject: [PATCH 3/9] 1. update stm32mp257_develop_defconfig 2. fix MIPI
  interface TIMEOUT
 
 ---

@@ -1,0 +1,96 @@
+From e7030ffb92861bdacea77f408ca12ec603d46de6 Mon Sep 17 00:00:00 2001
+From: Sully <sully.niu@outlook.com>
+Date: Thu, 8 Oct 2026 16:37:45 +0800
+Subject: [PATCH 7/9] drm/panel: alientek-mipi: fix device node leak and
+ unknown panel id
+
+of_find_node_by_name() results are never released in enable() and
+get_modes(); the latter runs on every connector probe, so the reference
+leak accumulated. Release the node right after reading the property.
+
+atk_no_mipi (= 1, no panel attached) fell through to the 720x1280 HX839X
+init sequence and reported a bogus 720p mode. Return -ENODEV for it, and
+warn (instead of staying silent) for other unknown ids, keeping the
+existing 720p fallback for them.
+
+Co-Authored-By: Claude Code <noreply@anthropic.com>
+---
+ drivers/gpu/drm/panel/Kconfig               |  2 +-
+ drivers/gpu/drm/panel/panel-alientek-mipi.c | 20 +++++++++++++++++---
+ 2 files changed, 18 insertions(+), 4 deletions(-)
+
+diff --git a/drivers/gpu/drm/panel/Kconfig b/drivers/gpu/drm/panel/Kconfig
+index cb64b48a1..4511f4dbc 100755
+--- a/drivers/gpu/drm/panel/Kconfig
++++ b/drivers/gpu/drm/panel/Kconfig
+@@ -15,7 +15,7 @@ config DRM_PANEL_ALIENTEK_MIPI_LCD
+ 	depends on BACKLIGHT_CLASS_DEVICE
+ 	help
+ 		Say Y here if you want to enable support for Alientek Himax839x and ILI9881
+-		TFT-LCD modules. The panel has a 5.5 inch lcd 720x1280, 1080x1920 
++		TFT-LCD modules. The panel has a 5.5 inch lcd 720x1280, 1080x1920
+ 		and 10.1 inch lcd 800x1280 resolution.
+ 
+ config DRM_PANEL_ABT_Y030XX067A
+diff --git a/drivers/gpu/drm/panel/panel-alientek-mipi.c b/drivers/gpu/drm/panel/panel-alientek-mipi.c
+index a1bc7b8b7..354f847b4 100755
+--- a/drivers/gpu/drm/panel/panel-alientek-mipi.c
++++ b/drivers/gpu/drm/panel/panel-alientek-mipi.c
+@@ -613,12 +613,17 @@ static int alientek_mipi_enable(struct drm_panel *panel)
+ 		return -ENODEV;
+ 	}
+     ret = of_property_read_u32(np,"dsi_select_id", &dsi_select_id);
++	of_node_put(np);
+ 	if(ret < 0)
+ 		return -ENODEV;
+ 
+     //printk("ATK-DEBUG:dsi_select_id = %d\n", dsi_select_id);
+ 
+-	if(dsi_select_id == atk_mipi_dsi_5x5_720x1280) {
++	if (dsi_select_id == atk_no_mipi) {
++		dev_err(ctx->dev, "no MIPI LCD is connected (dsi_select_id = %d)\n",
++			dsi_select_id);
++		return -ENODEV;
++	} else if(dsi_select_id == atk_mipi_dsi_5x5_720x1280) {
+ 		hx839x_init_sequence_720p(ctx);
+ 	} else if(dsi_select_id == atk_mipi_dsi_5x5_1080x1920) {
+ 		hx839x_init_sequence_1080p(ctx);
+@@ -637,6 +642,8 @@ static int alientek_mipi_enable(struct drm_panel *panel)
+ 		if(ret)
+ 			return ret;
+ 	} else {
++		dev_warn(ctx->dev, "unknown dsi_select_id %d, falling back to 720x1280\n",
++			 dsi_select_id);
+ 		hx839x_init_sequence_720p(ctx);
+ 	}
+ 
+@@ -677,10 +684,15 @@ static int alientek_mipi_get_modes(struct drm_panel *panel,
+ 		return -ENODEV;
+ 	}
+     ret = of_property_read_u32(np,"dsi_select_id", &dsi_select_id);
+-	if(ret < 0) 
++	of_node_put(np);
++	if(ret < 0)
+ 		return -ENODEV;
+ 
+-	if(dsi_select_id == atk_mipi_dsi_5x5_720x1280) {
++	if (dsi_select_id == atk_no_mipi) {
++		dev_err(panel->dev, "no MIPI LCD is connected (dsi_select_id = %d)\n",
++			dsi_select_id);
++		return -ENODEV;
++	} else if(dsi_select_id == atk_mipi_dsi_5x5_720x1280) {
+ 		mode = drm_mode_duplicate(connector->dev, &atk_mipi_dsi_5x5_720x1280_mode);
+ 		if(!mode) {
+ 			printk("failed to add mode %ux%u@%u\n",
+@@ -705,6 +717,8 @@ static int alientek_mipi_get_modes(struct drm_panel *panel,
+ 			return -ENOMEM;
+ 		}
+ 	} else {
++		dev_warn(panel->dev, "unknown dsi_select_id %d, falling back to 720x1280\n",
++			 dsi_select_id);
+ 		mode = drm_mode_duplicate(connector->dev, &atk_mipi_dsi_5x5_720x1280_mode);
+ 		if(!mode) {
+ 			printk("failed to add mode %ux%u@%u\n",
+-- 
+2.43.0
+

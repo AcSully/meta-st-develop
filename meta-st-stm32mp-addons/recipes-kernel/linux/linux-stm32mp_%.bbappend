@@ -18,6 +18,12 @@ SRC_URI += " \
     file://${LINUX_VERSION}/${LINUX_VERSION}${LINUX_SUBVERSION}/0001-stm32mp257-custom-changes-panel-es8388-motorcomm-fus.patch \
 	file://${LINUX_VERSION}/${LINUX_VERSION}${LINUX_SUBVERSION}/0002-update-stm32mp257_defconfig.patch \
 	file://${LINUX_VERSION}/${LINUX_VERSION}${LINUX_SUBVERSION}/0003-1.-update-stm32mp257_develop_defconfig.patch \
+	file://${LINUX_VERSION}/${LINUX_VERSION}${LINUX_SUBVERSION}/0004-net-phy-motorcomm-switch-back-to-the-in-tree-driver.patch \
+	file://${LINUX_VERSION}/${LINUX_VERSION}${LINUX_SUBVERSION}/0005-usb-typec-tcpm-fusb302-switch-back-to-the-upstream-T.patch \
+	file://${LINUX_VERSION}/${LINUX_VERSION}${LINUX_SUBVERSION}/0006-ASoC-es8388-fix-format-mask-headphone-IRQ-and-the-re.patch \
+	file://${LINUX_VERSION}/${LINUX_VERSION}${LINUX_SUBVERSION}/0007-drm-panel-alientek-mipi-fix-device-node-leak-and-unk.patch \
+	file://${LINUX_VERSION}/${LINUX_VERSION}${LINUX_SUBVERSION}/0008-arm64-defconfig-drop-the-redundant-_bak-copy.patch \
+	file://${LINUX_VERSION}/${LINUX_VERSION}${LINUX_SUBVERSION}/0009-net-phy-motorcomm-reapply-YT8531-clock-output-config.patch \
     "
 
 # ------------------------------------------------
