@@ -18,12 +18,19 @@ do
     card_info=\$(pactl list cards | grep "Card \$i" -A15 |  grep "api.alsa.card.name" | sed 's/ //g'| sed 's/api.alsa.card.name=\"//g'| sed 's/\"//g' | tr '\t' ' ' | sed 's/^\s*//g')
     echo ">\$i< \$card_info"
     # for each card, search alsa_card
-    found=\$(echo \$card_info | grep -n STM32MP | wc -l)
+    found=\$(echo \$card_info | grep -nE 'STM32MP|es8388' | wc -l)
     if [ \$found -eq 1 ];
     then
         index=\$(echo \$i | sed 's/#//')
         echo "pactl set-card-profile \$index $PROFILE"
-        pactl set-card-profile \$index $PROFILE
+        pactl set-card-profile \$index $PROFILE || pactl set-card-profile \$index pro-audio
+        default_sink=\$(pactl info | sed -n 's/^Default Sink: //p')
+        if [ "\$default_sink" = "auto_null" ] || [ -z "\$default_sink" ]; then
+            sink=\$(pactl list short sinks | awk '\$2 != "auto_null" {print \$2; exit}')
+            if [ -n "\$sink" ]; then
+                pactl set-default-sink "\$sink"
+            fi
+        fi
         break;
     fi
     index=\$((index+1))
