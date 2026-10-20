@@ -13,6 +13,7 @@ SRC_URI = " \
         file://psplash-drm-quit \
         file://pictures \
         file://pictures-animated \
+        file://pictures-animated-720x1280 \
     "
 
 SRC_URI += " file://psplash-drm-start.service file://psplash-drm-start.sh file://71-dev-dri-card0.rules"
@@ -51,6 +52,10 @@ do_install() {
         # extra animation
         install -d ${D}${prefix}/local/splashscreen/animated
         install -m 644 ${WORKDIR}/pictures-animated/* ${D}${prefix}/local/splashscreen/animated/
+
+        # extra animation for 720x1280 MIPI DSI panels (pre-rotated 90 degrees)
+        install -d ${D}${prefix}/local/splashscreen/animated-720x1280
+        install -m 644 ${WORKDIR}/pictures-animated-720x1280/* ${D}${prefix}/local/splashscreen/animated-720x1280/
     fi
 }
 PACKAGES += "${PN}-extra"

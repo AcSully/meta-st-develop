@@ -56,6 +56,16 @@ if [ -d /proc/device-tree/ ]; then
 		echo "[DEBUG]: lvds status: $lvds_status"
 
 		OPT="--force-no-hdmi"
+		# MIPI DSI 720x1280 panel. The UI is displayed landscape through
+		# weston transform=rotate-90, so use frames pre-rotated the same
+		# way as the built-in portrait fallback picture.
+		if grep -qsx "720x1280" /sys/class/drm/card*-DSI-*/modes || modetest 2>/dev/null | grep -q "720x1280"; then
+			echo "[DEBUG]: MIPI DSI 720x1280 (rotated landscape)"
+			if [ -d /usr/local/splashscreen/animated-720x1280 ] ; then
+				DEFAULT_SPLASH=/usr/local/splashscreen/animated-720x1280/splashscreen-animated_%05d.png
+				OPT="$OPT --framerate 20 -n 50 -l"
+			fi
+		fi
 		if [ -e  /proc/device-tree/panel-lvds ] && [ "$lvds_status" = "okay" ]; then
 			panel_lvds=$(cat /proc/device-tree/panel-lvds/compatible)
 			if $(cat /proc/device-tree/panel-lvds/compatible | grep -q "etml0700z8dh" )
